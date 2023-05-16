@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="fido_err_not_private_key">is not an instance of a PrivateKeyEntry</string>
+    <string name="fido_err_not_user_unauthenticated">User is not authenticated to device</string>
+    <string name="fido_err_single_certificate_in_chain">Only a single certificate was found in the chain; key was not generated in AndroidKeystore</string>
+    <string name="fido_err_signature_object_not_initialized">Signature has NOT been initialized</string>
+
+    <!--  FIDO KEY INFO MESSAGES  -->
+    <string name="fido_key_info_algorithm">Algorithm:</string>
+    <string name="fido_key_info_key_name">KeyName:</string>
+    <string name="fido_key_info_keystore_entry_name">Keystore Entry name:</string>
+    <string name="fido_key_info_number_of_certificates">Number of certificates in chain:</string>
+    <string name="fido_key_info_origin">Origin:</string>
+    <string name="fido_key_info_se_module">SEModule:</string>
+    <string name="fido_key_info_signature">Signature:</string>
+    <string name="fido_key_info_size">Size:</string>
+    <string name="fido_key_info_tbs">Hex-encoded ToBeSigned:</string>
+    <string name="fido_key_info_user_auth">UserAuth?:</string>
+
+    <!--  FIDO INFO MESSAGES  -->
+    <string name="fido_info_keygen_failure_se">Hardware secure element NOT found; attempting to use TEE</string>
+    <string name="fido_info_keygen_success_se">Generated key-pair in hardware secure element</string>
+    <string name="fido_info_keygen_success_tee">Generated key-pair in trusted execution environment</string>
+    <string name="fido_info_register_origin_rpid_mismatch">Origin and RPID from preregister challenge are not identical</string>
+    <string name="fido_info_authenticate_origin_rpid_mismatch">Origin and RPID from pre authenticate challenge are not identical</string>
+
+    <string name="android_keystore_key_generate_failed">AndroidKeystore failed to generate key-pair; see log for errors</string>
+
+</resources>
