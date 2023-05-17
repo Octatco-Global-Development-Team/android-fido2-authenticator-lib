@@ -6,11 +6,11 @@ plugins {
 }
 
 android {
-    namespace = "saebyeol.library.fido2"
+    namespace = "sortielab.library.example"
     compileSdk = Apps.compileSdk
 
     defaultConfig {
-        applicationId = "saebyeol.library.fido2"
+        applicationId = "sortielab.library.example"
         minSdk = Apps.minSdk
         targetSdk = Apps.targetSdk
         versionCode = Apps.versionCode
@@ -28,18 +28,17 @@ android {
             isMinifyEnabled = false
         }
     }
-
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
     kotlinOptions {
-        jvmTarget = JavaVersion.VERSION_11.toString()
+        jvmTarget = JavaVersion.VERSION_17.toString()
     }
 }
 
 dependencies {
-   Dependencies.AndroidDefault.run {
+    Dependencies.AndroidDefault.run {
         implementation(this.kotlinCore)
         implementation(this.appCompat)
         implementation(this.material)

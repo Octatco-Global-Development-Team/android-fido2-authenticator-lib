@@ -1,4 +1,4 @@
-package sortielab.library.fido2
+package sortielab.library.example
 
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.ext.junit.runners.AndroidJUnit4

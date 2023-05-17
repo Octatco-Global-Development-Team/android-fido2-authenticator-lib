@@ -13,7 +13,7 @@
         android:theme="@style/Theme.FIDO2Authenticator"
         tools:targetApi="31">
         <activity
-            android:name="sortielab.library.example.MainActivity"
+            android:name=".MainActivity"
             android:exported="true" >
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

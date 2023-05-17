@@ -1,4 +1,4 @@
-package sortielab.library.fido2
+package sortielab.library.example
 
 import org.junit.Test
 
