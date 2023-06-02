@@ -1,6 +1,7 @@
 package sortielab.library.fido2.encrypt.crypto
 
 import com.google.gson.JsonObject
+import sortielab.library.fido2.Dlog
 import sortielab.library.fido2.R
 import sortielab.library.fido2.encrypt.tools.CommonUtil
 import sortielab.library.fido2.RootApplication
@@ -58,7 +59,7 @@ class AuthenticatorGetAssertion {
                 val rfc6454Origin = CommonUtil.getRfc6454Origin(webOrigin)
                 val tldOrigin = CommonUtil.getTldPlusOne(webOrigin)
                 if (!rpid.equals(tldOrigin, ignoreCase = true)) {
-                    sortielab.library.fido2.Dlog.w(
+                    Dlog.w(
                         "${
                             RootApplication.getResource().getString(R.string.fido_info_authenticate_origin_rpid_mismatch)
                         } origin: $tldOrigin, rpid: $rpid"
@@ -73,13 +74,13 @@ class AuthenticatorGetAssertion {
                 val clientDataHash = CommonUtil.getBaseUrlSafeClientDataHash(FidoOperation.GET, challenge, rfc6454Origin)
 
                 check(clientDataHash != null)
-                sortielab.library.fido2.Dlog.v("clientDataJson: $clientDataJson\nCalculated Base64UrlSafe ClientDataHash: $clientDataHash")
+                Dlog.v("clientDataJson: $clientDataJson\nCalculated Base64UrlSafe ClientDataHash: $clientDataHash")
 
                 /**
                  * Step 2 - Get the PublicKeyCredential for the user
                  */
                 val credId = publicKeyCredential.credentialId
-                sortielab.library.fido2.Dlog.v("Using CredentialId: $credId")
+                Dlog.v("Using CredentialId: $credId")
 
                 /**
                  * Step 3 - Create AuthenticationSignature object
@@ -89,7 +90,7 @@ class AuthenticatorGetAssertion {
                     this.credentialId = credId
                     this.clientDataJson = clientDataJson
                 }
-                sortielab.library.fido2.Dlog.v(
+                Dlog.v(
                     "Built up authenticationSignature object: $authenticationSignature"
                 )
 
@@ -117,7 +118,7 @@ class AuthenticatorGetAssertion {
                 }
                 val authenticatorDataBytes = byteBuff.array()
                 authenticationSignature.authenticatorData = CommonUtil.urlEncode(authenticatorDataBytes)
-                sortielab.library.fido2.Dlog.v("Base64 URL-Encoded AuthenticatorData: ${authenticationSignature.authenticatorData}")
+                Dlog.v("Base64 URL-Encoded AuthenticatorData: ${authenticationSignature.authenticatorData}")
 
                 /**
                  * Step 5 - Final step - Get a digital signature

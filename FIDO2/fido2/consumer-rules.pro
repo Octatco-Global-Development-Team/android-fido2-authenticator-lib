@@ -48,4 +48,5 @@
 -keep class sortielab.library.fido2.fido.excute.UserAuthenticate { *; }
 -keep class sortielab.library.fido2.fido.data_class.* { *; }
 -keep class sortielab.library.fido2.fido.excute.BioCallback { *; }
+-keep class sortielab.library.fido2.fido.excute.FIDO2ResponseCallback { *; }
 -keep class sortielab.library.fido2.room.entity.PublicKeyCredential { *; }

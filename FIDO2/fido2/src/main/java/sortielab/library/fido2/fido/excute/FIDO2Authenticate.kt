@@ -1,17 +1,17 @@
+@file:Suppress("unused")
+
 package sortielab.library.fido2.fido.excute
 
-import android.os.Bundle
-import android.os.Handler
-import android.os.Message
 import android.widget.Toast
 import androidx.fragment.app.FragmentActivity
 import com.google.gson.JsonObject
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import sortielab.library.fido2.Dlog
+import sortielab.library.fido2.RootApplication
 import sortielab.library.fido2.encrypt.crypto.AuthenticatorGetAssertion
 import sortielab.library.fido2.encrypt.tools.CommonUtil
-import sortielab.library.fido2.RootApplication
 import sortielab.library.fido2.encrypt.tools.FidoConstants
 import sortielab.library.fido2.fido.data_class.AuthenticationSignature
 import sortielab.library.fido2.fido.data_class.FIDO2AuthenticatePayload
@@ -24,17 +24,17 @@ object FIDO2Authenticate {
     private lateinit var credRepository: CredentialRepository
 
     /**
-     * @param handler Required Received Return Result
      * @param activity Required Activity Position This Use BioPrompt
      * @param preAuth PreAuthenticate Receive Server Response This Vale MUST NOT NULL inside Value
      * @param webOrigin The origin value requested for fido2 authentication is required.
+     * @param callback Required Received Return Result
      * @return Returns the PublicKey Credentials that were created. Returns null if an error occurs.
      */
     fun getAuthenticateResponse(
-        handler: Handler,
         activity: FragmentActivity,
         preAuth: PreAuthenticateChallenge,
-        webOrigin: String
+        webOrigin: String,
+        callback: FIDO2ResponseCallback,
     ) {
         try {
             require(preAuth.rpId != null && preAuth.challenge != null && preAuth.allowCredentials != null) {
@@ -45,7 +45,7 @@ object FIDO2Authenticate {
                 this.context = RootApplication.getInstance().baseContext
                 this.bioCallback = object : BioCallback {
                     override fun onSuccess() {
-                        authenticateFIDO2Key(handler, preAuth, webOrigin)
+                        authenticateFIDO2Key(callback, preAuth, webOrigin)
                     }
 
                     override fun onFailed() {
@@ -55,35 +55,28 @@ object FIDO2Authenticate {
                 authenticate()
             }
         } catch (e: Exception) {
-            sortielab.library.fido2.Dlog.w("Error: ${e::class.java.simpleName} ${e.message}")
+            Dlog.w("Error: ${e::class.java.simpleName} ${e.message}")
             val key = FidoConstants.ERROR_EXCEPTION
             val msg = e.message ?: "Error Message Null"
             val ste = Thread.currentThread().stackTrace[4]
             val errJson = CommonUtil.getErrorJson(ste, key, msg)
 
-            Message().apply {
-                this.what = FidoConstants.FIDO_RESPONSE_AUTHENTICATE_FAIL
-                this.obj = Bundle().apply {
-                    this.putString(FidoConstants.BUNDLE_KEY_ERROR, errJson.toString())
-                }
-                handler.sendMessage(this)
-            }
+            callback.onAuthenticateFail(errJson.toString())
         }
-
     }
 
-    private fun authenticateFIDO2Key(handler: Handler, preAuth: PreAuthenticateChallenge, webOrigin: String) {
+    private fun authenticateFIDO2Key(callback: FIDO2ResponseCallback, preAuth: PreAuthenticateChallenge, webOrigin: String) {
         credRepository = CredentialRepository(RootApplication.getInstance())
 
         try {
             CoroutineScope(Dispatchers.IO).launch {
                 var publicKeyCredential: PublicKeyCredential? = null
                 for (allowCred in preAuth.allowCredentials!!) {
-                    sortielab.library.fido2.Dlog.d("Find Id: $allowCred")
+                    Dlog.d("Find Id: $allowCred")
                     val pubKeyTemp = credRepository.getCredentialData(preAuth.rpId!!, allowCred.id!!)
-                    sortielab.library.fido2.Dlog.v("Find Key: ${pubKeyTemp ?: "Not Found"}")
+                    Dlog.v("Find Key: ${pubKeyTemp ?: "Not Found"}")
                     if (pubKeyTemp != null) {
-                        sortielab.library.fido2.Dlog.v("Match Key: $pubKeyTemp")
+                        Dlog.v("Match Key: $pubKeyTemp")
                         publicKeyCredential = pubKeyTemp
                         break
                     }
@@ -102,7 +95,7 @@ object FIDO2Authenticate {
                             publicKeyCredential.counter,
                             webOrigin
                         )
-                        sortielab.library.fido2.Dlog.i("AuthenticationSignature: ${authSignature ?: "Error!!"}")
+                        Dlog.i("AuthenticationSignature: ${authSignature ?: "Error!!"}")
                         require(authSignature != null) {
                             "Device can not Authenticate Signature"
                         }
@@ -120,24 +113,11 @@ object FIDO2Authenticate {
                                     )
                                 )
 
-                                Message().apply {
-                                    this.what = FidoConstants.FIDO_RESPONSE_AUTHENTICATE_SUCCESS
-                                    this.obj = Bundle().apply {
-                                        this.putString("origin", publicKeyCredential.origin)
-                                        this.putString(FidoConstants.BUNDLE_KEY_FIDO_PAYLOAD_DATA, payload.toString())
-                                    }
-                                    handler.sendMessage(this)
-                                }
+                                callback.onAuthenticateComplete(payload)
                             }
 
                             is JsonObject -> {
-                                Message().apply {
-                                    this.what = FidoConstants.FIDO_RESPONSE_AUTHENTICATE_FAIL
-                                    this.obj = Bundle().apply {
-                                        this.putString(FidoConstants.BUNDLE_KEY_ERROR, authSignature.toString())
-                                    }
-                                    handler.sendMessage(this)
-                                }
+                                callback.onAuthenticateFail(authSignature.toString())
                             }
                         }
                     } catch (e: Exception) {
@@ -146,13 +126,7 @@ object FIDO2Authenticate {
                         val ste = Thread.currentThread().stackTrace[4]
                         val errJson = CommonUtil.getErrorJson(ste, key, msg)
 
-                        Message().apply {
-                            this.what = FidoConstants.FIDO_RESPONSE_AUTHENTICATE_FAIL
-                            this.obj = Bundle().apply {
-                                this.putString(FidoConstants.BUNDLE_KEY_ERROR, errJson.toString())
-                            }
-                            handler.sendMessage(this)
-                        }
+                        callback.onAuthenticateFail(errJson.toString())
                     }
                 }
             }
@@ -162,13 +136,7 @@ object FIDO2Authenticate {
             val ste = Thread.currentThread().stackTrace[4]
             val errJson = CommonUtil.getErrorJson(ste, key, msg)
 
-            Message().apply {
-                this.what = FidoConstants.FIDO_RESPONSE_AUTHENTICATE_FAIL
-                this.obj = Bundle().apply {
-                    this.putString(FidoConstants.BUNDLE_KEY_ERROR, errJson.toString())
-                }
-                handler.sendMessage(this)
-            }
+            callback.onAuthenticateFail(errJson.toString())
         }
     }
 }

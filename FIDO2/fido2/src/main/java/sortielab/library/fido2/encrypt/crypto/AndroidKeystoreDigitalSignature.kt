@@ -6,6 +6,7 @@ import android.security.keystore.UserNotAuthenticatedException
 import com.google.gson.JsonIOException
 import com.google.gson.JsonParseException
 import org.bouncycastle.util.encoders.Hex
+import sortielab.library.fido2.Dlog
 import sortielab.library.fido2.R
 import sortielab.library.fido2.encrypt.tools.CommonUtil
 import sortielab.library.fido2.RootApplication
@@ -66,7 +67,7 @@ class AndroidKeystoreDigitalSignature {
                 val keyStore = KeyStore.getInstance(FidoConstants.FIDO2_KEYSTORE_PROVIDER)
                 keyStore.load(null)
 
-                sortielab.library.fido2.Dlog.i("Credential Id: $credId, ${CommonUtil.urlDecode(credId).decodeToString()}")
+                Dlog.i("Credential Id: $credId, ${CommonUtil.urlDecode(credId).decodeToString()}")
                 val keyEntry: KeyStore.Entry? = keyStore.getEntry(CommonUtil.urlDecode(credId).decodeToString(), null)
                 if (keyEntry != null) {
                     if (keyEntry !is KeyStore.PrivateKeyEntry) {
@@ -107,20 +108,20 @@ class AndroidKeystoreDigitalSignature {
                 // print key information
                 val algorithm = "${privateKey!!.algorithm} [${FidoConstants.FIDO2_KEY_ECDSA_CURVE}]"
                 val secureHw = "${keyInfo.isInsideSecureHardware} [${securityModule ?: "null"}]"
-                sortielab.library.fido2.Dlog.v(
+                Dlog.v(
                     "${
                         RootApplication.getResource().getString(R.string.fido_key_info_key_name)
                     } ${keyInfo.keystoreAlias}"
                 )
-                sortielab.library.fido2.Dlog.v("${RootApplication.getResource().getString(R.string.fido_key_info_origin)} $keyOrigin")
-                sortielab.library.fido2.Dlog.v("${RootApplication.getResource().getString(R.string.fido_key_info_algorithm)} $algorithm")
-                sortielab.library.fido2.Dlog.v("${RootApplication.getResource().getString(R.string.fido_key_info_size)} ${keyInfo.keySize}")
-                sortielab.library.fido2.Dlog.v(
+                Dlog.v("${RootApplication.getResource().getString(R.string.fido_key_info_origin)} $keyOrigin")
+                Dlog.v("${RootApplication.getResource().getString(R.string.fido_key_info_algorithm)} $algorithm")
+                Dlog.v("${RootApplication.getResource().getString(R.string.fido_key_info_size)} ${keyInfo.keySize}")
+                Dlog.v(
                     "${
                         RootApplication.getResource().getString(R.string.fido_key_info_user_auth)
                     } ${keyInfo.isUserAuthenticationRequired}"
                 )
-                sortielab.library.fido2.Dlog.v("${RootApplication.getResource().getString(R.string.fido_key_info_se_module)} $secureHw")
+                Dlog.v("${RootApplication.getResource().getString(R.string.fido_key_info_se_module)} $secureHw")
 
                 // Initialize objects for digital signature
                 val toBeSigned: ByteArray
@@ -171,7 +172,7 @@ class AndroidKeystoreDigitalSignature {
                 }
 
                 // Log and return the signature
-                sortielab.library.fido2.Dlog.v(
+                Dlog.v(
                     "${RootApplication.getResource().getString(R.string.fido_key_info_tbs)} ${
                         Hex.toHexString(
                             toBeSigned

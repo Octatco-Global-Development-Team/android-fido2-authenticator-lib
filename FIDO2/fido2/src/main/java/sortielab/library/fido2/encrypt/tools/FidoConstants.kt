@@ -6,15 +6,6 @@ object FidoConstants {
     const val ATTESTATION_CONNECTION_TYPE: String = "TLS"
     const val USER_AUTHENTICATE_MODE_CREATE = "create"
     const val USER_AUTHENTICATE_MODE_AUTHENTICATE = "authenticate"
-    const val BUNDLE_KEY_FIDO_PAYLOAD_DATA = "payload"
-    const val BUNDLE_KEY_ERROR = "error"
-
-    // FIDO Response Handler Code
-    const val FIDO_RESPONSE_CREATE_SUCCESS = 11001
-    const val FIDO_RESPONSE_CREATE_FAIL = 11002
-
-    const val FIDO_RESPONSE_AUTHENTICATE_SUCCESS = 12001
-    const val FIDO_RESPONSE_AUTHENTICATE_FAIL = 12002
 
     // FIDO Properties
     const val FIDO2_KEYSTORE_PROVIDER = "AndroidKeyStore"

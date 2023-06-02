@@ -6,6 +6,7 @@ import androidx.biometric.BiometricManager
 import androidx.biometric.BiometricPrompt
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.FragmentActivity
+import sortielab.library.fido2.Dlog
 import sortielab.library.fido2.encrypt.tools.FidoConstants
 import java.util.concurrent.Executor
 
@@ -31,7 +32,7 @@ class UserAuthenticate(activity: FragmentActivity, type: String) {
 
             override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
                 super.onAuthenticationSucceeded(result)
-                sortielab.library.fido2.Dlog.i("User Authenticate with ${result.authenticationType}")
+                Dlog.i("User Authenticate with ${result.authenticationType}")
                 bioCallback?.onSuccess()
             }
 
@@ -84,7 +85,7 @@ class UserAuthenticate(activity: FragmentActivity, type: String) {
     }
 
     fun authenticate() {
-        sortielab.library.fido2.Dlog.d("authenticateEnable()")
+        Dlog.d("authenticateEnable()")
 
         val textStatus: String
         val biometricManager = BiometricManager.from(context)
@@ -121,12 +122,12 @@ class UserAuthenticate(activity: FragmentActivity, type: String) {
             //기타 실패
             else -> {
                 val enable = biometricManager.canAuthenticate(BiometricManager.Authenticators.DEVICE_CREDENTIAL)
-                sortielab.library.fido2.Dlog.i("Enable: $enable")
+                Dlog.i("Enable: $enable")
                 textStatus = "Fail Biometric facility"
             }
         }
 
-        sortielab.library.fido2.Dlog.i("Biometric Check Status: $textStatus")
+        Dlog.i("Biometric Check Status: $textStatus")
 
         goAuthenticate()
     }

@@ -10,6 +10,7 @@ import com.google.gson.JsonIOException
 import com.google.gson.JsonObject
 import com.google.gson.JsonParseException
 import org.bouncycastle.util.encoders.Hex
+import sortielab.library.fido2.Dlog
 import sortielab.library.fido2.R
 import sortielab.library.fido2.encrypt.tools.CommonUtil
 import sortielab.library.fido2.RootApplication
@@ -102,9 +103,9 @@ class AndroidKeystoreKeyGeneration {
                 keyGenerator.initialize(keyBuilder)
                 keyPair = keyGenerator.generateKeyPair()
                 securityModule = SecurityModule.SECURE_ELEMENT
-                sortielab.library.fido2.Dlog.i(RootApplication.getResource().getString(R.string.fido_info_keygen_success_se))
+                Dlog.i(RootApplication.getResource().getString(R.string.fido_info_keygen_success_se))
             } catch (e: NoSuchMethodError) {
-                sortielab.library.fido2.Dlog.w("${e::class.java.simpleName}: ${RootApplication.getResource().getString(R.string.fido_info_keygen_failure_se)}")
+                Dlog.w("${e::class.java.simpleName}: ${RootApplication.getResource().getString(R.string.fido_info_keygen_failure_se)}")
                 try {
                     keyGenerator = KeyPairGenerator.getInstance(
                         KeyProperties.KEY_ALGORITHM_EC,
@@ -134,7 +135,7 @@ class AndroidKeystoreKeyGeneration {
                     keyGenerator.initialize(keyBuilder)
                     keyPair = keyGenerator.generateKeyPair()
                     securityModule = SecurityModule.TRUSTED_EXECUTION_ENVIRONMENT
-                    sortielab.library.fido2.Dlog.i(RootApplication.getResource().getString(R.string.fido_info_keygen_success_tee))
+                    Dlog.i(RootApplication.getResource().getString(R.string.fido_info_keygen_success_tee))
                 } catch (e2: Exception) {
                     e2.printStackTrace()
                     when (e2) {
@@ -149,7 +150,7 @@ class AndroidKeystoreKeyGeneration {
                     }
                 }
             } catch (e: StrongBoxUnavailableException) {
-                sortielab.library.fido2.Dlog.w("${e::class.java.simpleName}: ${RootApplication.getResource().getString(R.string.fido_info_keygen_failure_se)}")
+                Dlog.w("${e::class.java.simpleName}: ${RootApplication.getResource().getString(R.string.fido_info_keygen_failure_se)}")
                 try {
                     keyGenerator = KeyPairGenerator.getInstance(
                         KeyProperties.KEY_ALGORITHM_EC,
@@ -179,7 +180,7 @@ class AndroidKeystoreKeyGeneration {
                     keyGenerator.initialize(keyBuilder)
                     keyPair = keyGenerator.generateKeyPair()
                     securityModule = SecurityModule.TRUSTED_EXECUTION_ENVIRONMENT
-                    sortielab.library.fido2.Dlog.i(RootApplication.getResource().getString(R.string.fido_info_keygen_success_tee))
+                    Dlog.i(RootApplication.getResource().getString(R.string.fido_info_keygen_success_tee))
                 } catch (e2: Exception) {
                     e2.printStackTrace()
                     when (e2) {
@@ -222,7 +223,7 @@ class AndroidKeystoreKeyGeneration {
                 val publicKey = keyPair.public
                 val keyFactory = KeyFactory.getInstance(privateKey.algorithm, FidoConstants.FIDO2_KEYSTORE_PROVIDER)
                 keyInfo = keyFactory.getKeySpec(privateKey, KeyInfo::class.java)
-                sortielab.library.fido2.Dlog.v("ECDSA PublicKey Format: ${publicKey.format}")
+                Dlog.v("ECDSA PublicKey Format: ${publicKey.format}")
 
                 // Check the origin of the key - if Generated, it was generated inside AndroidKeystore
                 // but not necessarily in hardware - emulators do support the AndroidKeystore in
@@ -249,20 +250,20 @@ class AndroidKeystoreKeyGeneration {
                 // print key information
                 val algorithm = "${privateKey.algorithm} [${FidoConstants.FIDO2_KEY_ECDSA_CURVE}]"
                 val secureHw = "${keyInfo.isInsideSecureHardware} [${securityModule ?: "null"}]"
-                sortielab.library.fido2.Dlog.v(
+                Dlog.v(
                     "${
                         RootApplication.getResource().getString(R.string.fido_key_info_key_name)
                     } ${keyInfo.keystoreAlias}"
                 )
-                sortielab.library.fido2.Dlog.v("${RootApplication.getResource().getString(R.string.fido_key_info_origin)} $keyOrigin")
-                sortielab.library.fido2.Dlog.v("${RootApplication.getResource().getString(R.string.fido_key_info_algorithm)} $algorithm")
-                sortielab.library.fido2.Dlog.v("${RootApplication.getResource().getString(R.string.fido_key_info_size)} ${keyInfo.keySize}")
-                sortielab.library.fido2.Dlog.v(
+                Dlog.v("${RootApplication.getResource().getString(R.string.fido_key_info_origin)} $keyOrigin")
+                Dlog.v("${RootApplication.getResource().getString(R.string.fido_key_info_algorithm)} $algorithm")
+                Dlog.v("${RootApplication.getResource().getString(R.string.fido_key_info_size)} ${keyInfo.keySize}")
+                Dlog.v(
                     "${
                         RootApplication.getResource().getString(R.string.fido_key_info_user_auth)
                     } ${keyInfo.isUserAuthenticationRequired}"
                 )
-                sortielab.library.fido2.Dlog.v("${RootApplication.getResource().getString(R.string.fido_key_info_se_module)} $secureHw")
+                Dlog.v("${RootApplication.getResource().getString(R.string.fido_key_info_se_module)} $secureHw")
                 val gson = GsonBuilder().setPrettyPrinting().create()
                 val keyJson = JsonObject().apply {
                     addProperty(FidoConstants.FIDO2_KEY_LABEL_KEY_NAME, keyInfo.keystoreAlias)
@@ -273,7 +274,7 @@ class AndroidKeystoreKeyGeneration {
                     addProperty(FidoConstants.FIDO2_KEY_LABEL_SE_MODULE, secureHw)
                     addProperty(FidoConstants.FIDO2_KEY_LABEL_HEX_PUBLIC_KEY, Hex.toHexString(publicKey.encoded))
                 }
-                sortielab.library.fido2.Dlog.v("Newly Generated FIDO2 Key: ${gson.toJson(keyJson)}")
+                Dlog.v("Newly Generated FIDO2 Key: ${gson.toJson(keyJson)}")
                 return keyJson
             } catch (e: Exception) {
                 when (e) {

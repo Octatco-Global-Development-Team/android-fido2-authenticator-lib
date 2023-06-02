@@ -5,7 +5,7 @@ import android.util.Log
 object Dlog {
     var DEBUG = false
 
-    private const val TAG = "MFAFidoLibrary"
+    private const val TAG = "FIDO2Authenticator"
 
     /** Log Level Error  */
     fun e(message: String?) {

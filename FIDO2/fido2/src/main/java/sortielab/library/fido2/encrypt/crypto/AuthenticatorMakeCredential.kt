@@ -5,6 +5,7 @@ import com.google.gson.JsonObject
 import com.google.gson.JsonParseException
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import org.bouncycastle.util.encoders.Hex
+import sortielab.library.fido2.Dlog
 import sortielab.library.fido2.R
 import sortielab.library.fido2.encrypt.tools.CommonUtil
 import sortielab.library.fido2.RootApplication
@@ -70,7 +71,7 @@ class AuthenticatorMakeCredential {
                 val rfc6454Origin = CommonUtil.getRfc6454Origin(webOrigin)
                 val tldOrigin = CommonUtil.getTldPlusOne(webOrigin)
                 if (!rpid.equals(tldOrigin, ignoreCase = true)) {
-                    sortielab.library.fido2.Dlog.w(
+                    Dlog.w(
                         "${
                             RootApplication.getResource().getString(R.string.fido_info_register_origin_rpid_mismatch)
                         } origin: $tldOrigin, rpid: $rpid"
@@ -84,7 +85,7 @@ class AuthenticatorMakeCredential {
                 val clientDataHash = CommonUtil.getBaseUrlSafeClientDataHash(FidoOperation.CREATE, challenge, rfc6454Origin)
 
                 check(clientDataHash != null)
-                sortielab.library.fido2.Dlog.v("clientDataJson: $clientDataJson\nCalculated Base64UrlSafe ClientDataHash: $clientDataHash")
+                Dlog.v("clientDataJson: $clientDataJson\nCalculated Base64UrlSafe ClientDataHash: $clientDataHash")
 
                 /**
                  * Step 2 - Generate the public-private key-pair using ECDSA (mostly)
@@ -102,22 +103,22 @@ class AuthenticatorMakeCredential {
                  */
                 // First generate the credential ID
                 val credId = CommonUtil.getNewCredentialId(rpid, userid)
-                sortielab.library.fido2.Dlog.v("Cred: $credId")
+                Dlog.v("Cred: $credId")
                 val newKey = AndroidKeystoreKeyGeneration.makeAndroidKeystoreKey(credId, clientDataHash)
                 if (newKey == null) {
-                    sortielab.library.fido2.Dlog.w(RootApplication.getResource().getString(R.string.android_keystore_key_generate_failed))
+                    Dlog.w(RootApplication.getResource().getString(R.string.android_keystore_key_generate_failed))
                     return null
                 } else {
                     if (newKey is JsonObject) {
                         if (newKey.has("error")) {
-                            sortielab.library.fido2.Dlog.w("Key Generate Error Occurred: ${newKey.getAsJsonObject("error")}")
+                            Dlog.w("Key Generate Error Occurred: ${newKey.getAsJsonObject("error")}")
                             return newKey
                         }
                     }
                 }
 
                 // No keygen errors
-                sortielab.library.fido2.Dlog.v("Generated Key-Pair: $newKey, ${newKey::class.java.simpleName}")
+                Dlog.v("Generated Key-Pair: $newKey, ${newKey::class.java.simpleName}")
                 val json = newKey as JsonObject
                 // Key-pair generated - create PublicKeyCredential object for persistence to RoomDB
                 val publicKeyCredential = PublicKeyCredential(
@@ -140,7 +141,7 @@ class AuthenticatorMakeCredential {
                     userHandle = CommonUtil.urlEncode(json.toString().toByteArray(Charsets.UTF_8)),
                     origin = rfc6454Origin
                 )
-                sortielab.library.fido2.Dlog.v("Built up PublicKeyCredential: $publicKeyCredential")
+                Dlog.v("Built up PublicKeyCredential: $publicKeyCredential")
 
                 /**
                  * Step 3 - Create Attested Credential Data byte array
@@ -161,7 +162,7 @@ class AuthenticatorMakeCredential {
                             .generatePublic(pubKeySpec)
                     cosePubKey = CommonUtil.coseEncodePublicKey(pubKey)
                     pubKeyLen = cosePubKey.size
-                    sortielab.library.fido2.Dlog.v("COSE PublicKey Length: ${Hex.toHexString(cosePubKey)} [$pubKeyLen]")
+                    Dlog.v("COSE PublicKey Length: ${Hex.toHexString(cosePubKey)} [$pubKeyLen]")
                 } catch (e: NoSuchAlgorithmException) {
                     e.printStackTrace()
                 } catch (e: InvalidKeySpecException) {
@@ -173,7 +174,7 @@ class AuthenticatorMakeCredential {
                 val cidblen = credIdBytes.size.toShort()
                 val twoBytes = ByteBuffer.allocate(2)
                 twoBytes.putShort(cidblen)
-                sortielab.library.fido2.Dlog.v("Allocate ByteBuffer With Bytes: ${(16 + 2 + cidblen + pubKeyLen)}")
+                Dlog.v("Allocate ByteBuffer With Bytes: ${(16 + 2 + cidblen + pubKeyLen)}")
                 val byteBuffStep3 = ByteBuffer.allocate(16 + 2 + cidblen + pubKeyLen).apply {
                     put(Hex.decode(FidoConstants.WEBAUTHN_SORTIELAB_ANDROID_FIDO2_AAGUID))
                     put(twoBytes.array())
@@ -211,7 +212,7 @@ class AuthenticatorMakeCredential {
                 val authenticatorDataBytes = byteBuffStep4.array()
                 publicKeyCredential.counter = curCounter + FidoConstants.FIDO_COUNTER_ONE
                 publicKeyCredential.authenticatorData = Hex.toHexString(authenticatorDataBytes)
-                sortielab.library.fido2.Dlog.v("Hex-Encoded Authenticator Data: ${Hex.toHexString(authenticatorDataBytes)}")
+                Dlog.v("Hex-Encoded Authenticator Data: ${Hex.toHexString(authenticatorDataBytes)}")
 
                 /**
                  * Step 5 - Final step - Get an AndroidKeystore Key attestation

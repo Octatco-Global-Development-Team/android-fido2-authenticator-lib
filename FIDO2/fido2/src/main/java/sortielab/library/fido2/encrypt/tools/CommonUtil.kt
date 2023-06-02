@@ -2,6 +2,7 @@ package sortielab.library.fido2.encrypt.tools
 
 import com.google.gson.JsonObject
 import org.bouncycastle.util.encoders.Hex
+import sortielab.library.fido2.Dlog
 import sortielab.library.fido2.encrypt.cbor.CborEncoder
 import sortielab.library.fido2.encrypt.data_class.Encoding
 import sortielab.library.fido2.encrypt.data_class.FidoOperation
@@ -121,7 +122,7 @@ object CommonUtil {
             cbe.writeInt(-3)
             cbe.writeByteString(y)
         } catch (e: IOException) {
-            sortielab.library.fido2.Dlog.w("Error: ${e.message}")
+            Dlog.w("Error: ${e.message}")
         }
         return baos.toByteArray()
     }
@@ -136,7 +137,7 @@ object CommonUtil {
             val md = MessageDigest.getInstance("SHA-256")
             md.digest(input)
         } catch (ex: NoSuchAlgorithmException) {
-            sortielab.library.fido2.Dlog.w("Error: ${ex.message}")
+            Dlog.w("Error: ${ex.message}")
             null
         }
     }
@@ -151,7 +152,7 @@ object CommonUtil {
             val md = MessageDigest.getInstance("SHA-256")
             md.digest(input.toByteArray(Charsets.UTF_8))
         } catch (ex: NoSuchAlgorithmException) {
-            sortielab.library.fido2.Dlog.w("Error: ${ex.message}")
+            Dlog.w("Error: ${ex.message}")
             null
         }
     }
@@ -167,7 +168,7 @@ object CommonUtil {
             val md = MessageDigest.getInstance("SHA-256")
             md.digest(input)
         } catch (ex: NoSuchAlgorithmException) {
-            sortielab.library.fido2.Dlog.w("Error: ${ex.message}")
+            Dlog.w("Error: ${ex.message}")
             return null
         }
         return if (encoding == Encoding.BASE64) {
@@ -188,10 +189,10 @@ object CommonUtil {
             val md = MessageDigest.getInstance("SHA-256")
             md.digest(input.toByteArray(Charsets.UTF_8))
         } catch (ex: NoSuchAlgorithmException) {
-            sortielab.library.fido2.Dlog.w("Error: ${ex.message}")
+            Dlog.w("Error: ${ex.message}")
             return null
         } catch (ex: UnsupportedEncodingException) {
-            sortielab.library.fido2.Dlog.w("Error: ${ex.message}")
+            Dlog.w("Error: ${ex.message}")
             return null
         }
         return if (encoding == Encoding.BASE64) {
@@ -209,16 +210,16 @@ object CommonUtil {
     fun printVeryLongLogMessage(msgtype: String, message: String) {
         val dashes = "\n---------------------------------------------------------------------\n"
         val msglen = message.length
-        sortielab.library.fido2.Dlog.i("Size of message: $msglen$dashes")
+        Dlog.i("Size of message: $msglen$dashes")
         val loop = msglen / 4000
         var startIndex = 0
         var endIndex = 4000
         for (i in 0 until loop) {
-            sortielab.library.fido2.Dlog.v("$msgtype - Part: $i\n${message.substring(startIndex, endIndex)}")
+            Dlog.v("$msgtype - Part: $i\n${message.substring(startIndex, endIndex)}")
             startIndex = endIndex
             endIndex += 4000
         }
-        sortielab.library.fido2.Dlog.i(msgtype + " - Final Part: " + message.substring(startIndex) + dashes)
+        Dlog.i(msgtype + " - Final Part: " + message.substring(startIndex) + dashes)
     }
 
     /**
@@ -231,7 +232,7 @@ object CommonUtil {
             val fqdn = url.host
             val position = fqdn.indexOf('.')
             tldPlusOne = fqdn.substring(position + 1)
-            sortielab.library.fido2.Dlog.v("TLD+1: $tldPlusOne\nURI: ${url.toURI()}")
+            Dlog.v("TLD+1: $tldPlusOne\nURI: ${url.toURI()}")
         } catch (e: MalformedURLException) {
             e.printStackTrace()
         } catch (e: URISyntaxException) {
@@ -259,7 +260,7 @@ object CommonUtil {
                 val fqdnPosition = webURL.indexOf(fqdn)
                 webURL.substring(0, (fqdnPosition + fqdn.length))
             }
-            sortielab.library.fido2.Dlog.v("RFC6454-Origin: $origin\nURI: ${url.toURI()}")
+            Dlog.v("RFC6454-Origin: $origin\nURI: ${url.toURI()}")
         } catch (e: MalformedURLException) {
             e.printStackTrace()
         } catch (e: URISyntaxException) {
@@ -275,7 +276,7 @@ object CommonUtil {
      * @return JSONObject containing the encoded JSON of CollectedClientData
      */
     private fun getClientDataJSON(operation: FidoOperation, challenge: String, origin: String): JsonObject {
-        sortielab.library.fido2.Dlog.v("Input Params - Operation: $operation\nChallenge: $challenge\nOrigin: $origin")
+        Dlog.v("Input Params - Operation: $operation\nChallenge: $challenge\nOrigin: $origin")
 
         // Assemble clientDataJson attributes into a JSON object
         var clientDataJson: JsonObject? = null
@@ -327,11 +328,11 @@ object CommonUtil {
      */
     fun getBase64UrlSafeClientDataString(operation: FidoOperation, challenge: String, origin: String): String {
         val clientDataJson = getClientDataJSON(operation, challenge, origin)
-        sortielab.library.fido2.Dlog.v("ClientDataJson: $clientDataJson")
+        Dlog.v("ClientDataJson: $clientDataJson")
         val utf8EncodedClientData = String(clientDataJson.toString().toByteArray(Charsets.UTF_8), Charsets.UTF_8)
-        sortielab.library.fido2.Dlog.v("Utf8EncodedClientData: $utf8EncodedClientData")
+        Dlog.v("Utf8EncodedClientData: $utf8EncodedClientData")
         val urlEncodedUTF8EncodedClientData = urlEncode(utf8EncodedClientData)
-        sortielab.library.fido2.Dlog.v("URLEncodedUTF8EncodedClientData: $urlEncodedUTF8EncodedClientData")
+        Dlog.v("URLEncodedUTF8EncodedClientData: $urlEncodedUTF8EncodedClientData")
         return urlEncodedUTF8EncodedClientData
     }
 
@@ -343,10 +344,10 @@ object CommonUtil {
      */
     fun getBaseUrlSafeClientDataHash(operation: FidoOperation, challenge: String, origin: String): String? {
         val base64UrlSafeEncodedClientDataString = getBase64UrlSafeClientDataString(operation, challenge, origin)
-        sortielab.library.fido2.Dlog.v("Base64UrlSafeEncodedClientDataString: $base64UrlSafeEncodedClientDataString")
+        Dlog.v("Base64UrlSafeEncodedClientDataString: $base64UrlSafeEncodedClientDataString")
         getSha256(urlDecode(base64UrlSafeEncodedClientDataString))?.let {
             val data = urlEncode(it)
-            sortielab.library.fido2.Dlog.v("UrlEncodedBase64UrlSafeEncodedClientDataHash: $data")
+            Dlog.v("UrlEncodedBase64UrlSafeEncodedClientDataHash: $data")
             return data
         }
         return null
@@ -430,10 +431,10 @@ object CommonUtil {
     @Throws(IOException::class)
     fun getCborExtensions(extensions: ArrayList<String>?, secureHw: String?): ByteArray {
         if (extensions == null || secureHw == null) {
-            sortielab.library.fido2.Dlog.w("Required Input Parameters are Not null")
+            Dlog.w("Required Input Parameters are Not null")
             throw IOException("Required input parameters are null")
         }
-        sortielab.library.fido2.Dlog.v("ParamCheck: $extensions, $secureHw")
+        Dlog.v("ParamCheck: $extensions, $secureHw")
 
         val baos = ByteArrayOutputStream()
         val cbe = CborEncoder(baos)
@@ -444,7 +445,7 @@ object CommonUtil {
         // What type of security hardware is in use?
         val seModule = secureHw.substring(0, 4)
         if (!(seModule.equals("true", ignoreCase = true))) {
-            sortielab.library.fido2.Dlog.w("Not using secure hardware - cannot use AndroidKeystore $${seModule}")
+            Dlog.w("Not using secure hardware - cannot use AndroidKeystore $${seModule}")
             throw IOException("Not using secure hardware - cannot use AndroidKeystore $${seModule}")
         }
 
@@ -453,7 +454,7 @@ object CommonUtil {
         val etx = secureHw.indexOf(']')
         val keyProtection: Int
         val setType = secureHw.substring(stx + 1, etx)
-        sortielab.library.fido2.Dlog.v("Secure Hardware: $setType")
+        Dlog.v("Secure Hardware: $setType")
         keyProtection = if (setType.equals("SECURE_ELEMENT", ignoreCase = true)) {
             FidoConstants.FIDO_KEY_PROTECTION_HARDWARE + FidoConstants.FIDO_KEY_PROTECTION_SECURE_ELEMENT
         } else {
@@ -483,7 +484,7 @@ object CommonUtil {
                 }
 
                 else -> {
-                    sortielab.library.fido2.Dlog.w("Not Other FIDO Extension Currently Supported Yet")
+                    Dlog.w("Not Other FIDO Extension Currently Supported Yet")
                     throw IOException("Not Other FIDO Extension Currently Supported Yet")
                 }
             }
@@ -491,7 +492,7 @@ object CommonUtil {
 
         // Convert to byte-array and hex-encode to a string for display
         val result = baos.toByteArray()
-        sortielab.library.fido2.Dlog.v(String(Hex.encode(result), Charsets.UTF_8))
+        Dlog.v(String(Hex.encode(result), Charsets.UTF_8))
         return result
     }
 
@@ -534,7 +535,7 @@ object CommonUtil {
             append("-")
             append(hexDigest.substring(48))
         }
-        sortielab.library.fido2.Dlog.v("Generated new Credential Id: $sb")
+        Dlog.v("Generated new Credential Id: $sb")
         return sb.toString()
     }
 }

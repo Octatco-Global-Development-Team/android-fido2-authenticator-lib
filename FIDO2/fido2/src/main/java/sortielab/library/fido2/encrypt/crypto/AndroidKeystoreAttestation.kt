@@ -11,6 +11,7 @@ import com.google.gson.JsonParseException
 import org.bouncycastle.util.encoders.Hex
 import org.bouncycastle.util.io.pem.PemObject
 import org.bouncycastle.util.io.pem.PemWriter
+import sortielab.library.fido2.Dlog
 import sortielab.library.fido2.R
 import sortielab.library.fido2.encrypt.cbor.CborEncoder
 import sortielab.library.fido2.encrypt.tools.CommonUtil
@@ -90,7 +91,7 @@ class AndroidKeystoreAttestation {
                 val keyStore = KeyStore.getInstance(FidoConstants.FIDO2_KEYSTORE_PROVIDER)
                 keyStore.load(null)
 
-                sortielab.library.fido2.Dlog.i("Credential Id: $credId")
+                Dlog.i("Credential Id: $credId")
                 val keyEntry: KeyStore.Entry? = keyStore.getEntry(credId, null)
                 if (keyEntry != null) {
                     if (keyEntry !is KeyStore.PrivateKeyEntry) {
@@ -131,20 +132,20 @@ class AndroidKeystoreAttestation {
                 // print key information
                 val algorithm = "${privateKey!!.algorithm} [${FidoConstants.FIDO2_KEY_ECDSA_CURVE}]"
                 val secureHw = "${keyInfo.isInsideSecureHardware} [${securityModule ?: "null"}]"
-                sortielab.library.fido2.Dlog.v(
+                Dlog.v(
                     "${
                         RootApplication.getResource().getString(R.string.fido_key_info_key_name)
                     } ${keyInfo.keystoreAlias}"
                 )
-                sortielab.library.fido2.Dlog.v("${RootApplication.getResource().getString(R.string.fido_key_info_origin)} $keyOrigin")
-                sortielab.library.fido2.Dlog.v("${RootApplication.getResource().getString(R.string.fido_key_info_algorithm)} $algorithm")
-                sortielab.library.fido2.Dlog.v("${RootApplication.getResource().getString(R.string.fido_key_info_size)} ${keyInfo.keySize}")
-                sortielab.library.fido2.Dlog.v(
+                Dlog.v("${RootApplication.getResource().getString(R.string.fido_key_info_origin)} $keyOrigin")
+                Dlog.v("${RootApplication.getResource().getString(R.string.fido_key_info_algorithm)} $algorithm")
+                Dlog.v("${RootApplication.getResource().getString(R.string.fido_key_info_size)} ${keyInfo.keySize}")
+                Dlog.v(
                     "${
                         RootApplication.getResource().getString(R.string.fido_key_info_user_auth)
                     } ${keyInfo.isUserAuthenticationRequired}"
                 )
-                sortielab.library.fido2.Dlog.v("${RootApplication.getResource().getString(R.string.fido_key_info_se_module)} $secureHw")
+                Dlog.v("${RootApplication.getResource().getString(R.string.fido_key_info_se_module)} $secureHw")
 
                 // Initialize Digital Signature
                 val sign = Signature.getInstance(FidoConstants.FIDO2_SIGNATURE_ALGORITHM)
@@ -170,7 +171,7 @@ class AndroidKeystoreAttestation {
                     sign.update(toBeSigned)
                     signature = sign.sign()
                     base64URLSignature = CommonUtil.urlEncode(signature)
-                    sortielab.library.fido2.Dlog.i(
+                    Dlog.i(
                         "${RootApplication.getResource().getString(R.string.fido_key_info_tbs)} ${
                             Hex.toHexString(toBeSigned)
                         }\n${
@@ -195,7 +196,7 @@ class AndroidKeystoreAttestation {
                     val ste = Thread.currentThread().stackTrace[4]
                     return CommonUtil.getErrorJson(ste, key, msg)
                 }
-                sortielab.library.fido2.Dlog.i(
+                Dlog.i(
                     "${
                         RootApplication.getResource().getString(R.string.fido_key_info_number_of_certificates)
                     } $certsNumber"
@@ -223,7 +224,7 @@ class AndroidKeystoreAttestation {
                     )
                 }
                 certArray.add(firCert)
-                sortielab.library.fido2.Dlog.i("Added Credential Certificate: #0")
+                Dlog.i("Added Credential Certificate: #0")
 
                 // Now the certificate chain in order
                 for (i in 1 until certsNumber) {
@@ -233,10 +234,10 @@ class AndroidKeystoreAttestation {
                             jArray.get(i).asString
                         )
                     }
-                    sortielab.library.fido2.Dlog.v("Added CA Certificate: #$i")
+                    Dlog.v("Added CA Certificate: #$i")
                     certArray.add(certObj)
                 }
-                sortielab.library.fido2.Dlog.i("Number of JsonArray Certificate from JArray ${certArray.size()}")
+                Dlog.i("Number of JsonArray Certificate from JArray ${certArray.size()}")
 
                 // This private method breaks down very long messages and prints it in sections
                 val gson = GsonBuilder().setPrettyPrinting().create()
@@ -405,7 +406,7 @@ class AndroidKeystoreAttestation {
             // Convert to byte-array and hex-encode to a string for display
             val result = baos.toByteArray()
             val cborString = CommonUtil.urlEncode(result)
-            sortielab.library.fido2.Dlog.v("Cbor Attestation: $cborString")
+            Dlog.v("Cbor Attestation: $cborString")
             return cborString
         }
     }
