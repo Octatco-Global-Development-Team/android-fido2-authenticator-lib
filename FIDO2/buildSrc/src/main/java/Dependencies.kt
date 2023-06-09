@@ -24,6 +24,7 @@ interface Dependencies {
     object GSON {
         const val jackson = "com.fasterxml.jackson.module:jackson-module-kotlin:2.15.0"
         const val gsonCore = "com.google.code.gson:gson:2.10.1"
+        const val okhttp = "com.squareup.okhttp3:okhttp:${Versions.okhttp}"
     }
 }
 

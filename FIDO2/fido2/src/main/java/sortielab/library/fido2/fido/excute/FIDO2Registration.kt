@@ -16,6 +16,7 @@ import sortielab.library.fido2.encrypt.tools.CommonUtil
 import sortielab.library.fido2.encrypt.tools.FidoConstants
 import sortielab.library.fido2.fido.data_class.FIDO2RegisterPayload
 import sortielab.library.fido2.fido.data_class.PreRegisterChallenge
+import sortielab.library.fido2.fido.data_class.RegisterPublicKeyCredential
 import sortielab.library.fido2.fido.data_class.WebAuthnRegisterPayloadResponse
 import sortielab.library.fido2.room.entity.PublicKeyCredential
 import sortielab.library.fido2.room.repo.CredentialRepository
@@ -86,11 +87,12 @@ object FIDO2Registration {
                             clientDataJSON = credObj.clientDataJson
                         )
                     )
+
                     CoroutineScope(Dispatchers.IO).launch {
                         kotlin.runCatching { credRepository.insert(credObj) }.onSuccess {
                             Dlog.i("Key Stored: Id: $it")
 
-                            callback.onRegisterComplete(payload)
+                            callback.onRegisterComplete(RegisterPublicKeyCredential(publicKeyCredential = payload))
                         }
                     }
                 }

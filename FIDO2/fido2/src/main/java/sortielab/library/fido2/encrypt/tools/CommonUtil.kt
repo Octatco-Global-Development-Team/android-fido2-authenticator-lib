@@ -1,6 +1,8 @@
 package sortielab.library.fido2.encrypt.tools
 
+import android.net.Uri
 import com.google.gson.JsonObject
+import okhttp3.internal.publicsuffix.PublicSuffixDatabase
 import org.bouncycastle.util.encoders.Hex
 import sortielab.library.fido2.Dlog
 import sortielab.library.fido2.encrypt.cbor.CborEncoder
@@ -226,19 +228,8 @@ object CommonUtil {
      * Extract the TLD+1 from the origin of the app's webservice URL
      */
     fun getTldPlusOne(webURL: String): String? {
-        var tldPlusOne: String? = null
-        try {
-            val url = URL(webURL)
-            val fqdn = url.host
-            val position = fqdn.indexOf('.')
-            tldPlusOne = fqdn.substring(position + 1)
-            Dlog.v("TLD+1: $tldPlusOne\nURI: ${url.toURI()}")
-        } catch (e: MalformedURLException) {
-            e.printStackTrace()
-        } catch (e: URISyntaxException) {
-            e.printStackTrace()
-        }
-        return tldPlusOne
+        val tld = PublicSuffixDatabase.get().getEffectiveTldPlusOne(webURL)
+        return Uri.parse(tld).host ?: tld
     }
 
     /**

@@ -74,6 +74,7 @@ dependencies {
     Dependencies.GSON.run {
         implementation(this.jackson)
         implementation(this.gsonCore)
+        implementation(this.okhttp)
     }
 }
 

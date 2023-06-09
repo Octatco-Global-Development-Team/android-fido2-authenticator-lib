@@ -13,6 +13,7 @@ import sortielab.library.fido2.RootApplication
 import sortielab.library.fido2.encrypt.crypto.AuthenticatorGetAssertion
 import sortielab.library.fido2.encrypt.tools.CommonUtil
 import sortielab.library.fido2.encrypt.tools.FidoConstants
+import sortielab.library.fido2.fido.data_class.AuthenticatePublicKeyCredential
 import sortielab.library.fido2.fido.data_class.AuthenticationSignature
 import sortielab.library.fido2.fido.data_class.FIDO2AuthenticatePayload
 import sortielab.library.fido2.fido.data_class.PreAuthenticateChallenge
@@ -113,7 +114,7 @@ object FIDO2Authenticate {
                                     )
                                 )
 
-                                callback.onAuthenticateComplete(payload)
+                                callback.onAuthenticateComplete(AuthenticatePublicKeyCredential(publicKeyCredential = payload))
                             }
 
                             is JsonObject -> {
