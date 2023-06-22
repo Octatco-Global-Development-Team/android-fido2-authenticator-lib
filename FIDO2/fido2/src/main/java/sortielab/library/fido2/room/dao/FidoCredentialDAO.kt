@@ -20,5 +20,5 @@ interface FidoCredentialDAO {
     suspend fun updateCredentialInfo(publicKeyCredential: PublicKeyCredential)
 
     @Delete
-    suspend fun deleteCredential(publicKeyCredential: PublicKeyCredential)
+    suspend fun deleteCredential(publicKeyCredential: PublicKeyCredential): Int
 }

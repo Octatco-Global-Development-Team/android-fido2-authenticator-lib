@@ -35,4 +35,11 @@ interface FIDO2ResponseCallback {
     fun onAuthenticateFail(result: String) {
 
     }
+
+    /**
+     * @param result Library SQL DML Result Return Boolean
+     */
+    fun onCredentialDelete(result: Boolean) {
+
+    }
 }

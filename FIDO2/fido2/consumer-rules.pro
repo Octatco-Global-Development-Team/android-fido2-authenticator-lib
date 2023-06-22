@@ -42,6 +42,7 @@
 
 -keep class sortielab.library.fido2.fido.excute.FIDO2Registration { *; }
 -keep class sortielab.library.fido2.fido.excute.FIDO2Authenticate { *; }
+-keep class sortielab.library.fido2.fido.excute.FIDO2Credential { *; }
 -keep class sortielab.library.fido2.RootApplication { *; }
 -keep class sortielab.library.fido2.RootApplication$Companion { *; }
 -keep class sortielab.library.fido2.encrypt.tools.FidoConstants { *; }

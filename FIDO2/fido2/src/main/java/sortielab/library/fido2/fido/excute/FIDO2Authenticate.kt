@@ -29,7 +29,6 @@ object FIDO2Authenticate {
      * @param preAuth PreAuthenticate Receive Server Response This Vale MUST NOT NULL inside Value
      * @param webOrigin The origin value requested for fido2 authentication is required.
      * @param callback Required Received Return Result
-     * @return Returns the PublicKey Credentials that were created. Returns null if an error occurs.
      */
     fun getAuthenticateResponse(
         activity: FragmentActivity,
