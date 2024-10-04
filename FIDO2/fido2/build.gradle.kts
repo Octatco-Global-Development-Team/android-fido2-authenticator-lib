@@ -132,7 +132,8 @@ afterEvaluate {
 //                        }
                         name.set("fido2-authenticator")
                         description.set("Android Fido2 Authenticator Made By Sortielab With Saebyeol")
-                        url.set("https://github.com/SortieLab/android-fido2-authenticator-lib")
+//                        url.set("https://github.com/SortieLab/android-fido2-authenticator-lib")
+                        url.set("https://github.com/Octatco-Global-Development-Team/android-fido2-authenticator-lib")
                         developers {
                             developer {
                                 id.set("Snorlax")
@@ -153,7 +154,8 @@ afterEvaluate {
         repositories {
             maven {
                 name = "GithubPackages"
-                url = uri("https://maven.pkg.github.com/SortieLab/android-fido2-authenticator-lib")
+//                url = uri("https://maven.pkg.github.com/SortieLab/android-fido2-authenticator-lib")
+                url = uri("https://maven.pkg.github.com/Octatco-Global-Development-Team/android-fido2-authenticator-lib")
                 credentials {
                     username = (githubProperties["github_username"] ?: System.getenv("github_username")) as String?
                     password =
