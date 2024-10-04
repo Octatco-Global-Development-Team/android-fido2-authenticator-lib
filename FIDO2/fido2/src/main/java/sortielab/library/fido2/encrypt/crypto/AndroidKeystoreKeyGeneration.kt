@@ -12,11 +12,11 @@ import com.google.gson.JsonParseException
 import org.bouncycastle.util.encoders.Hex
 import sortielab.library.fido2.Dlog
 import sortielab.library.fido2.R
-import sortielab.library.fido2.encrypt.tools.CommonUtil
 import sortielab.library.fido2.RootApplication
-import sortielab.library.fido2.encrypt.tools.FidoConstants
 import sortielab.library.fido2.encrypt.data_class.KeyOrigin
 import sortielab.library.fido2.encrypt.data_class.SecurityModule
+import sortielab.library.fido2.encrypt.tools.CommonUtil
+import sortielab.library.fido2.encrypt.tools.FidoConstants
 import java.io.IOException
 import java.security.InvalidAlgorithmParameterException
 import java.security.KeyFactory
@@ -105,7 +105,11 @@ class AndroidKeystoreKeyGeneration {
                 securityModule = SecurityModule.SECURE_ELEMENT
                 Dlog.i(RootApplication.getResource().getString(R.string.fido_info_keygen_success_se))
             } catch (e: NoSuchMethodError) {
-                Dlog.w("${e::class.java.simpleName}: ${RootApplication.getResource().getString(R.string.fido_info_keygen_failure_se)}")
+                Dlog.w(
+                    "${e::class.java.simpleName}: ${
+                        RootApplication.getResource().getString(R.string.fido_info_keygen_failure_se)
+                    }"
+                )
                 try {
                     keyGenerator = KeyPairGenerator.getInstance(
                         KeyProperties.KEY_ALGORITHM_EC,
@@ -141,7 +145,8 @@ class AndroidKeystoreKeyGeneration {
                     when (e2) {
                         is NoSuchAlgorithmException,
                         is InvalidAlgorithmParameterException,
-                        is NoSuchProviderException -> {
+                        is NoSuchProviderException,
+                        -> {
                             val key = FidoConstants.ERROR_EXCEPTION
                             val msg = e.message ?: "Error Message Null"
                             val ste = Thread.currentThread().stackTrace[4]
@@ -150,7 +155,11 @@ class AndroidKeystoreKeyGeneration {
                     }
                 }
             } catch (e: StrongBoxUnavailableException) {
-                Dlog.w("${e::class.java.simpleName}: ${RootApplication.getResource().getString(R.string.fido_info_keygen_failure_se)}")
+                Dlog.w(
+                    "${e::class.java.simpleName}: ${
+                        RootApplication.getResource().getString(R.string.fido_info_keygen_failure_se)
+                    }"
+                )
                 try {
                     keyGenerator = KeyPairGenerator.getInstance(
                         KeyProperties.KEY_ALGORITHM_EC,
@@ -186,7 +195,8 @@ class AndroidKeystoreKeyGeneration {
                     when (e2) {
                         is NoSuchAlgorithmException,
                         is InvalidAlgorithmParameterException,
-                        is NoSuchProviderException -> {
+                        is NoSuchProviderException,
+                        -> {
                             val key = FidoConstants.ERROR_EXCEPTION
                             val msg = e.message ?: "Error Message Null"
                             val ste = Thread.currentThread().stackTrace[4]
@@ -199,7 +209,8 @@ class AndroidKeystoreKeyGeneration {
                     is IllegalStateException,
                     is InvalidAlgorithmParameterException,
                     is NoSuchAlgorithmException,
-                    is NoSuchProviderException -> {
+                    is NoSuchProviderException,
+                    -> {
                         e.printStackTrace()
                         val key = FidoConstants.ERROR_EXCEPTION
                         val msg = e.message ?: "Error Message Null"
@@ -285,16 +296,22 @@ class AndroidKeystoreKeyGeneration {
                     is NoSuchProviderException,
                     is InvalidKeySpecException,
                     is JsonIOException,
-                    is JsonParseException, -> {
+                    is JsonParseException,
+                    -> {
                         val key = FidoConstants.ERROR_EXCEPTION
                         val msg = e.message ?: "Error Message Null"
                         val ste = Thread.currentThread().stackTrace[4]
                         return CommonUtil.getErrorJson(ste, key, msg)
                     }
+
+                    else -> {
+                        e.printStackTrace()
+                        Dlog.e("Unknown Exception!!! : ${e::class.java.simpleName}")
+                        Dlog.e("Error Reason: ${e.message}")
+                        return null
+                    }
                 }
             }
-
-            return null
         }
     }
 }

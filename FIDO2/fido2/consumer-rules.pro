@@ -30,6 +30,10 @@
 -keep,allowobfuscation,allowshrinking class * extends com.google.gson.reflect.TypeToken
 
 ##---------------End: proguard configuration for Gson  ----------
+
+
+-keep class org.bouncycastle.** { *; }
+-keep interface org.bouncycastle.** { *; }
 -keep class androidx.** { *; }
 -keep interface androidx.** { *; }
 

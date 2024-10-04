@@ -1,6 +1,9 @@
 @file:Suppress("UnstableApiUsage")
 
 import java.util.Properties
+import org.gradle.api.tasks.Delete
+import org.gradle.kotlin.dsl.*
+
 
 plugins {
     id("com.android.library")
@@ -77,6 +80,21 @@ dependencies {
         implementation(this.okhttp)
     }
 }
+
+
+// Delete the existing library.jar file
+val deleteObjectJar by tasks.registering(Delete::class) {
+    delete("release/fido.jar")
+}
+
+// Generate the library.jar file in the release folder
+val exportJar by tasks.registering(Copy::class) {
+    from("build/intermediates/aar_main_jar/release/")
+    into("release/")
+    include("classes.jar")
+    rename("classes.jar", "fido.jar")
+}
+
 
 // Configure the maven-publish plugin.
 afterEvaluate {

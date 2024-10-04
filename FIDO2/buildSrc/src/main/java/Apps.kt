@@ -8,5 +8,5 @@ object Apps {
     // FIDO2 Module Info
     const val moduleGroupId = "sortielab.library.fido2"
     const val moduleArtifactId = "fido2-authenticator"
-    const val moduleVersion = "1.0.4"
+    const val moduleVersion = "1.0.6"
 }
