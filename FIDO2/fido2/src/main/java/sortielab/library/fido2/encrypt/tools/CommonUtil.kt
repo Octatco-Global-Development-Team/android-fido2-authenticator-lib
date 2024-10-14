@@ -233,6 +233,16 @@ object CommonUtil {
     }
 
     /**
+     * Remove first subDomain from the URL (to extract the Relying Party ID)
+     */
+    fun removeFirstSubDomain(webURL: String): String? {
+        val host = Uri.parse(webURL).host ?: return null
+        val parts = host.split(".")
+        if (parts.size < 2) return host // If it's already just domain and TLD, return as-is
+        return parts.drop(1).joinToString(".")
+    }
+
+    /**
      * Extract the RFC6454 origin of the app's webservice URL
      * https://tools.ietf.org/html/rfc6454#page-10
      */
