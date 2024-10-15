@@ -79,6 +79,8 @@ dependencies {
         implementation(this.gsonCore)
         implementation(this.okhttp)
     }
+
+    implementation("com.fasterxml.jackson.dataformat:jackson-dataformat-cbor:2.15.0")
 }
 
 

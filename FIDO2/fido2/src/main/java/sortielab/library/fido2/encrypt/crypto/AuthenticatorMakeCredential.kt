@@ -21,6 +21,9 @@ import java.security.spec.InvalidKeySpecException
 import java.security.spec.X509EncodedKeySpec
 import java.util.Date
 
+import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.dataformat.cbor.CBORFactory
+
 class AuthenticatorMakeCredential {
     companion object {
         /**
@@ -70,7 +73,8 @@ class AuthenticatorMakeCredential {
                 Dlog.i("Step 1 Start: Create Client Data")
                 check(rpid != null && userid != null && username != null && dispName != null && challenge != null)
                 val rfc6454Origin = CommonUtil.getRfc6454Origin(webOrigin)
-                val tldOrigin = CommonUtil.getTldPlusOne(webOrigin)
+                //val tldOrigin = CommonUtil.getTldPlusOne(webOrigin)
+                val tldOrigin = CommonUtil.removeFirstSubDomain(webOrigin)
                 if (!rpid.equals(tldOrigin, ignoreCase = true)) {
                     Dlog.w(
                         "${
@@ -123,6 +127,8 @@ class AuthenticatorMakeCredential {
                 // No keygen errors
                 Dlog.v("Generated Key-Pair: $newKey, ${newKey::class.java.simpleName}")
                 val json = newKey as JsonObject
+                val attestationProvided = json.get("AttestationProvided").asBoolean
+                Dlog.v("ATTESTATION PROVIDED....: $attestationProvided")
                 // Key-pair generated - create PublicKeyCredential object for persistence to RoomDB
                 val publicKeyCredential = PublicKeyCredential(
                     id = 0,
@@ -219,6 +225,23 @@ class AuthenticatorMakeCredential {
                 publicKeyCredential.authenticatorData = Hex.toHexString(authenticatorDataBytes)
                 Dlog.v("Step 4 Complete. Hex-Encoded Authenticator Data: ${Hex.toHexString(authenticatorDataBytes)}")
 
+                if(!attestationProvided) {
+                    Dlog.v("No attestation provided, make empty attestation Obj")
+                    //{
+                    //"fmt" : "none", Indicates that no attestation is provided
+                    //"authData": "BASE64URL_ENCODED_AUTHENTICATOR_DATA", Binary data in CBOR format
+                    //"attStmt" :{} Empty or minimal attestation statement
+                    //}
+                    // Generate the attestationObject
+                    val attestationObject = makeNoAttestationObj(authenticatorDataBytes)
+                    // Print the CBOR-encoded attestationObject as a hexadecimal string
+                    println(attestationObject.joinToString("") { String.format("%02x", it) })
+                    val cborString = CommonUtil.urlEncode(attestationObject)
+                    publicKeyCredential.cborAttestation = cborString
+                    return publicKeyCredential
+                }
+
+
                 /**
                  * Step 5 - Final step - Get an AndroidKeystore Key attestation
                  * https://www.w3.org/TR/webauthn/#android-key-attestation
@@ -235,15 +258,20 @@ class AuthenticatorMakeCredential {
                  * }
                  */
                 Dlog.i("Step 5 Start -- Create Android Keystore Attestation")
+                Dlog.i("TESTING....")
                 val response =
                     AndroidKeystoreAttestation.makeAndroidKeyAttestation(authenticatorDataBytes, credId, clientDataHash)
+                Dlog.v("response: ${response}")
                 if (response != null) {
                     val fidoAndKeyStoreAttestation =
                         response.getAsJsonObject(FidoConstants.ANDROID_KEYSTORE_ATTESTATION_LABEL_FIDO)
+                    Dlog.v("fidoandkeystore ${fidoAndKeyStoreAttestation}")
                     publicKeyCredential.jsonAttestation =
                         fidoAndKeyStoreAttestation.getAsJsonObject(FidoConstants.ANDROID_KEYSTORE_ATTESTATION_LABEL_FIDO_JSON_FORMAT).toString()
+                    Dlog.v("publicKey,json ${publicKeyCredential.jsonAttestation}")
                     publicKeyCredential.cborAttestation =
                         fidoAndKeyStoreAttestation.get(FidoConstants.ANDROID_KEYSTORE_ATTESTATION_LABEL_FIDO_CBOR_FORMAT).asString
+                    Dlog.v("publicKey,cbor ${publicKeyCredential.cborAttestation}")
                     Dlog.i("Step 5 Complete")
                     return publicKeyCredential
                 }
@@ -263,6 +291,25 @@ class AuthenticatorMakeCredential {
                 }
             }
             return null
+        }
+
+        fun makeNoAttestationObj (authenticatorDataBytes: ByteArray): ByteArray {
+            val fmt = "none"
+            val attStmt = emptyMap<String, Any>()  // No attestation statement
+
+            // Step 2: Create a map representing the attestationObject
+            val attestationObject = mapOf(
+                "fmt" to fmt,
+                "authData" to authenticatorDataBytes,
+                "attStmt" to attStmt
+            )
+
+            Dlog.i("ATTESTATION OBJ ${attestationObject}")
+
+            // Step 3: Use a CBOR encoder to encode the attestationObject
+            val cborMapper = ObjectMapper(CBORFactory())
+            return cborMapper.writeValueAsBytes(attestationObject)  // Returns CBOR-encoded byte array
+
         }
     }
 }

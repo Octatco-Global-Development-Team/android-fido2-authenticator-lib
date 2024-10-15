@@ -10,6 +10,7 @@ import com.google.gson.JsonIOException
 import com.google.gson.JsonObject
 import com.google.gson.JsonParseException
 import org.bouncycastle.util.encoders.Hex
+import org.bouncycastle.jce.provider.BouncyCastleProvider
 import sortielab.library.fido2.Dlog
 import sortielab.library.fido2.R
 import sortielab.library.fido2.RootApplication
@@ -70,6 +71,7 @@ class AndroidKeystoreKeyGeneration {
         fun makeAndroidKeystoreKey(credId: String, clientDataHash: String): Any? {
             var securityModule: SecurityModule? = null
             var keyPair: KeyPair? = null
+            var attestationProvided: Boolean
             lateinit var keyGenerator: KeyPairGenerator
 
             Dlog.v("Starting key generation for credId: $credId")
@@ -90,7 +92,6 @@ class AndroidKeystoreKeyGeneration {
                     .setAttestationChallenge(CommonUtil.urlDecode(clientDataHash))
                     .setIsStrongBoxBacked(true)  // StrongBox backed
                     .setUserAuthenticationRequired(true)
-
                 // Adjust for SDK versions
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                     keySpec.setUserAuthenticationParameters(
@@ -100,21 +101,35 @@ class AndroidKeystoreKeyGeneration {
                 } else {
                     keySpec.setUserAuthenticationValidityDurationSeconds(timeout)
                 }
-
+                Dlog.v("KeySpec.. = ${keySpec}")
                 keyGenerator.initialize(keySpec.build())
+                Dlog.v("KeyGenerator.. = ${keyGenerator}")
                 keyPair = keyGenerator.generateKeyPair()
+                Dlog.v("KeyPair.. = ${keyPair}")
                 securityModule = SecurityModule.SECURE_ELEMENT
+                attestationProvided = false
                 Dlog.i("Key generated successfully in Secure Element (StrongBox)")
             } catch (e: Exception) {
                 Dlog.w("Secure Element (StrongBox) key generation failed, falling back to TEE: ${e.localizedMessage}")
                 // Step 2: Fallback to TEE
-                keyPair = try {
-                    tryTEEKeyGeneration(credId, clientDataHash)
+                try {
+                    keyPair = tryTEEKeyGeneration(credId, clientDataHash)
+                    attestationProvided = true
                 } catch (teeException: Exception) {
                     Dlog.e("TEE key generation failed, falling back to software-based key generation: ${teeException.localizedMessage}")
                     // Step 3: Fallback to software-based key generation
-                    trySoftwareKeyGeneration(credId, clientDataHash)
+                    keyPair = generateWithoutAttestation(credId, clientDataHash)
+                    attestationProvided = false
                 }
+//                keyPair = try {
+//                    tryTEEKeyGeneration(credId, clientDataHash)
+//                    attestationProvided = true
+//                } catch (teeException: Exception) {
+//                    Dlog.e("TEE key generation failed, falling back to software-based key generation: ${teeException.localizedMessage}")
+//                    // Step 3: Fallback to software-based key generation
+//                    generateWithoutAttestation(credId, clientDataHash)
+//                    attestationProvided = false
+//                }
                 securityModule = if (keyPair != null) SecurityModule.TRUSTED_EXECUTION_ENVIRONMENT else SecurityModule.SOFTWARE
             }
 
@@ -122,7 +137,7 @@ class AndroidKeystoreKeyGeneration {
             if (keyPair != null) {
                 Dlog.v("Attempting to retrieve key information")
                 try {
-                    return retrieveKeyInfo(keyPair, securityModule, clientDataHash)
+                    return retrieveKeyInfo(keyPair, securityModule, clientDataHash, attestationProvided)
                 } catch (e: Exception) {
                     Dlog.e("Exception during key retrieval: ${e.localizedMessage}")
                     return handleKeyGenerationError(e)
@@ -153,8 +168,8 @@ class AndroidKeystoreKeyGeneration {
         }
 
         // Function to fallback to software-based key generation (without hardware backing)
-        private fun trySoftwareKeyGeneration(credId: String, clientDataHash: String): KeyPair? {
-            Dlog.v("Attempting to generate software-based key")
+        private fun generateWithoutAttestation(credId: String, clientDataHash: String): KeyPair? {
+            Dlog.v("Attempting to generate key wihtout attestation")
             val keyGenerator = KeyPairGenerator.getInstance(KeyProperties.KEY_ALGORITHM_EC, "AndroidKeyStore")
 
             val keySpec = KeyGenParameterSpec.Builder(credId, KeyProperties.PURPOSE_SIGN or KeyProperties.PURPOSE_VERIFY)
@@ -164,15 +179,14 @@ class AndroidKeystoreKeyGeneration {
                     KeyProperties.DIGEST_SHA384,
                     KeyProperties.DIGEST_SHA512
                 )
-                .setAttestationChallenge(null)
+                //.setAttestationChallenge(CommonUtil.urlDecode(clientDataHash))
                 .setUserAuthenticationRequired(true)
-                .setIsStrongBoxBacked(false)  // Ensure software key generation
 
             keyGenerator.initialize(keySpec.build())
             return keyGenerator.generateKeyPair()
         }
 
-        private fun retrieveKeyInfo(keyPair: KeyPair, securityModule: SecurityModule?, clientDataHash: String): JsonObject {
+        private fun retrieveKeyInfo(keyPair: KeyPair, securityModule: SecurityModule?, clientDataHash: String, attestationProvided: Boolean): JsonObject {
             Dlog.v("Retrieving key information")
 
             val keyStore = KeyStore.getInstance(FidoConstants.FIDO2_KEYSTORE_PROVIDER)
@@ -203,6 +217,7 @@ class AndroidKeystoreKeyGeneration {
                 addProperty(FidoConstants.FIDO2_KEY_LABEL_USER_AUTH, keyInfo.isUserAuthenticationRequired)
                 addProperty(FidoConstants.FIDO2_KEY_LABEL_SE_MODULE, secureHw)
                 addProperty(FidoConstants.FIDO2_KEY_LABEL_HEX_PUBLIC_KEY, Hex.toHexString(publicKey.encoded))
+                addProperty("AttestationProvided", attestationProvided)
             }
         }
 
