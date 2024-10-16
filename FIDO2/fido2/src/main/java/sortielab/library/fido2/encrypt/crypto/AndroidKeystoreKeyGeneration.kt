@@ -107,7 +107,7 @@ class AndroidKeystoreKeyGeneration {
                 keyPair = keyGenerator.generateKeyPair()
                 Dlog.v("KeyPair.. = ${keyPair}")
                 securityModule = SecurityModule.SECURE_ELEMENT
-                attestationProvided = false
+                attestationProvided = true
                 Dlog.i("Key generated successfully in Secure Element (StrongBox)")
             } catch (e: Exception) {
                 Dlog.w("Secure Element (StrongBox) key generation failed, falling back to TEE: ${e.localizedMessage}")
@@ -121,15 +121,6 @@ class AndroidKeystoreKeyGeneration {
                     keyPair = generateWithoutAttestation(credId, clientDataHash)
                     attestationProvided = false
                 }
-//                keyPair = try {
-//                    tryTEEKeyGeneration(credId, clientDataHash)
-//                    attestationProvided = true
-//                } catch (teeException: Exception) {
-//                    Dlog.e("TEE key generation failed, falling back to software-based key generation: ${teeException.localizedMessage}")
-//                    // Step 3: Fallback to software-based key generation
-//                    generateWithoutAttestation(credId, clientDataHash)
-//                    attestationProvided = false
-//                }
                 securityModule = if (keyPair != null) SecurityModule.TRUSTED_EXECUTION_ENVIRONMENT else SecurityModule.SOFTWARE
             }
 
@@ -151,6 +142,7 @@ class AndroidKeystoreKeyGeneration {
         // Function to attempt key generation with TEE (without StrongBox)
         private fun tryTEEKeyGeneration(credId: String, clientDataHash: String): KeyPair? {
             Dlog.v("Attempting to generate key in TEE")
+            val timeout = FidoConstants.FIDO2_USER_AUTHENTICATION_VALIDITY * 60
             val keyGenerator = KeyPairGenerator.getInstance(KeyProperties.KEY_ALGORITHM_EC, FidoConstants.FIDO2_KEYSTORE_PROVIDER)
 
             val keySpec = KeyGenParameterSpec.Builder(credId, KeyProperties.PURPOSE_SIGN or KeyProperties.PURPOSE_VERIFY)
@@ -163,6 +155,15 @@ class AndroidKeystoreKeyGeneration {
                 .setAttestationChallenge(CommonUtil.urlDecode(clientDataHash))
                 .setUserAuthenticationRequired(true)  // TEE key generation without StrongBox
 
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                keySpec.setUserAuthenticationParameters(
+                    timeout,
+                    KeyProperties.AUTH_DEVICE_CREDENTIAL or KeyProperties.AUTH_BIOMETRIC_STRONG
+                )
+            } else {
+                keySpec.setUserAuthenticationValidityDurationSeconds(timeout)
+            }
+
             keyGenerator.initialize(keySpec.build())
             return keyGenerator.generateKeyPair()
         }
@@ -170,6 +171,7 @@ class AndroidKeystoreKeyGeneration {
         // Function to fallback to software-based key generation (without hardware backing)
         private fun generateWithoutAttestation(credId: String, clientDataHash: String): KeyPair? {
             Dlog.v("Attempting to generate key wihtout attestation")
+            val timeout = FidoConstants.FIDO2_USER_AUTHENTICATION_VALIDITY * 60
             val keyGenerator = KeyPairGenerator.getInstance(KeyProperties.KEY_ALGORITHM_EC, "AndroidKeyStore")
 
             val keySpec = KeyGenParameterSpec.Builder(credId, KeyProperties.PURPOSE_SIGN or KeyProperties.PURPOSE_VERIFY)
@@ -179,8 +181,17 @@ class AndroidKeystoreKeyGeneration {
                     KeyProperties.DIGEST_SHA384,
                     KeyProperties.DIGEST_SHA512
                 )
-                //.setAttestationChallenge(CommonUtil.urlDecode(clientDataHash))
+                .setUserAuthenticationValidityDurationSeconds(60)
                 .setUserAuthenticationRequired(true)
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                keySpec.setUserAuthenticationParameters(
+                    timeout,
+                    KeyProperties.AUTH_DEVICE_CREDENTIAL or KeyProperties.AUTH_BIOMETRIC_STRONG
+                )
+            } else {
+                keySpec.setUserAuthenticationValidityDurationSeconds(timeout)
+            }
 
             keyGenerator.initialize(keySpec.build())
             return keyGenerator.generateKeyPair()

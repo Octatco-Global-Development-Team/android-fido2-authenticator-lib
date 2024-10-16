@@ -21,9 +21,6 @@ import java.security.spec.InvalidKeySpecException
 import java.security.spec.X509EncodedKeySpec
 import java.util.Date
 
-import com.fasterxml.jackson.databind.ObjectMapper
-import com.fasterxml.jackson.dataformat.cbor.CBORFactory
-
 class AuthenticatorMakeCredential {
     companion object {
         /**
@@ -225,22 +222,6 @@ class AuthenticatorMakeCredential {
                 publicKeyCredential.authenticatorData = Hex.toHexString(authenticatorDataBytes)
                 Dlog.v("Step 4 Complete. Hex-Encoded Authenticator Data: ${Hex.toHexString(authenticatorDataBytes)}")
 
-                if(!attestationProvided) {
-                    Dlog.v("No attestation provided, make empty attestation Obj")
-                    //{
-                    //"fmt" : "none", Indicates that no attestation is provided
-                    //"authData": "BASE64URL_ENCODED_AUTHENTICATOR_DATA", Binary data in CBOR format
-                    //"attStmt" :{} Empty or minimal attestation statement
-                    //}
-                    // Generate the attestationObject
-                    val attestationObject = makeNoAttestationObj(authenticatorDataBytes)
-                    // Print the CBOR-encoded attestationObject as a hexadecimal string
-                    println(attestationObject.joinToString("") { String.format("%02x", it) })
-                    val cborString = CommonUtil.urlEncode(attestationObject)
-                    publicKeyCredential.cborAttestation = cborString
-                    return publicKeyCredential
-                }
-
 
                 /**
                  * Step 5 - Final step - Get an AndroidKeystore Key attestation
@@ -258,7 +239,14 @@ class AuthenticatorMakeCredential {
                  * }
                  */
                 Dlog.i("Step 5 Start -- Create Android Keystore Attestation")
-                Dlog.i("TESTING....")
+
+                if(!attestationProvided) {
+                    Dlog.i("GENERATING WITHOUT ATTESTATION!")
+                    publicKeyCredential.cborAttestation = AndroidKeystoreAttestation.buildCborAttestation(authenticatorDataBytes, null, null, null, false)
+                    return publicKeyCredential
+                }
+
+                Dlog.i("GENERATING WITH ATTESTATION!")
                 val response =
                     AndroidKeystoreAttestation.makeAndroidKeyAttestation(authenticatorDataBytes, credId, clientDataHash)
                 Dlog.v("response: ${response}")
@@ -293,23 +281,5 @@ class AuthenticatorMakeCredential {
             return null
         }
 
-        fun makeNoAttestationObj (authenticatorDataBytes: ByteArray): ByteArray {
-            val fmt = "none"
-            val attStmt = emptyMap<String, Any>()  // No attestation statement
-
-            // Step 2: Create a map representing the attestationObject
-            val attestationObject = mapOf(
-                "fmt" to fmt,
-                "authData" to authenticatorDataBytes,
-                "attStmt" to attStmt
-            )
-
-            Dlog.i("ATTESTATION OBJ ${attestationObject}")
-
-            // Step 3: Use a CBOR encoder to encode the attestationObject
-            val cborMapper = ObjectMapper(CBORFactory())
-            return cborMapper.writeValueAsBytes(attestationObject)  // Returns CBOR-encoded byte array
-
-        }
     }
 }
