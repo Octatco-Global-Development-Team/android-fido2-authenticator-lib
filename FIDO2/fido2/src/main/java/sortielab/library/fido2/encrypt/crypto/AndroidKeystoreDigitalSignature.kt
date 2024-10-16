@@ -140,7 +140,6 @@ class AndroidKeystoreDigitalSignature {
                         val ste = Thread.currentThread().stackTrace[4]
                         return CommonUtil.getErrorJson(ste, key, msg)
                     }
-
                     val clientDataHashBytes = CommonUtil.urlDecode(clientDataHash)
                     toBeSigned = ByteArray(authenticatorDataBytes.size + clientDataHashBytes.size)
                     System.arraycopy(authenticatorDataBytes, 0, toBeSigned, 0, authenticatorDataBytes.size)
