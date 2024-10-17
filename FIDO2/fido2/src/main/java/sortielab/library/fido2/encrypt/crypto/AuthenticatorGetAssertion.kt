@@ -45,6 +45,7 @@ class AuthenticatorGetAssertion {
             }
 
             try {
+                Dlog.i("Step 1 start")
                 /**
                  * Step 1 - Create ClientData SHA256 Base64Url encoded string
                  * Data structure for CollectedClientData is as follows:
@@ -75,6 +76,7 @@ class AuthenticatorGetAssertion {
 
                 check(clientDataHash != null)
                 Dlog.v("clientDataJson: $clientDataJson\nCalculated Base64UrlSafe ClientDataHash: $clientDataHash")
+                Dlog.i("Step 1 finish")
 
                 /**
                  * Step 2 - Get the PublicKeyCredential for the user
@@ -105,6 +107,7 @@ class AuthenticatorGetAssertion {
                  *  N-bytes with extensions - variable length
                  *  N-bytes with clientDataHash
                  */
+                Dlog.i("Step 4 start")
                 val authenticationFlags =
                     CommonUtil.setFlags(FidoConstants.ANDROID_KEYSTORE_DEFAULT_AUTHENTICATION_FLAGS)
                 val extensions = arrayListOf(FidoConstants.FIDO2_EXTENSION_USER_VERIFICATION_METHOD)
@@ -119,6 +122,7 @@ class AuthenticatorGetAssertion {
                 val authenticatorDataBytes = byteBuff.array()
                 authenticationSignature.authenticatorData = CommonUtil.urlEncode(authenticatorDataBytes)
                 Dlog.v("Base64 URL-Encoded AuthenticatorData: ${authenticationSignature.authenticatorData}")
+                Dlog.i("Step 4 finish")
 
                 /**
                  * Step 5 - Final step - Get a digital signature
@@ -127,7 +131,10 @@ class AuthenticatorGetAssertion {
                  * Since we're only doing a FIDO authentication, the last parameter here -
                  * for a JCE Signature object will be NULL.
                  */
+                Dlog.i("Step 5 start")
+                Dlog.i("AUTHENTICATOR DATA BYTES ${authenticatorDataBytes}}. Cred ID ${credId}. ClientHash ${clientDataHash}")
                 val response = AndroidKeystoreDigitalSignature.makeAndroidDigitalSignature(authenticatorDataBytes, credId, clientDataHash, null)
+                Dlog.i("RESPONSE ${response}")
                 if(response != null) {
                     if(response is JsonObject) {
                         return response

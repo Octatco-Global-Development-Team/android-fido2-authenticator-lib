@@ -10,6 +10,7 @@ import com.google.gson.JsonIOException
 import com.google.gson.JsonObject
 import com.google.gson.JsonParseException
 import org.bouncycastle.util.encoders.Hex
+import org.bouncycastle.jce.provider.BouncyCastleProvider
 import sortielab.library.fido2.Dlog
 import sortielab.library.fido2.R
 import sortielab.library.fido2.RootApplication
@@ -68,18 +69,20 @@ class AndroidKeystoreKeyGeneration {
          * @return JsonObject with the generated key's details, or error messages
          */
         fun makeAndroidKeystoreKey(credId: String, clientDataHash: String): Any? {
-            val keyOrigin: KeyOrigin?
             var securityModule: SecurityModule? = null
             var keyPair: KeyPair? = null
+            var attestationProvided: Boolean
             lateinit var keyGenerator: KeyPairGenerator
 
-            // Generate key-pair in secure element, if available
+            Dlog.v("Starting key generation for credId: $credId")
+
+            // Step 1: Try generating key-pair in Secure Element (StrongBox)
             try {
+                Dlog.v("Attempting to generate key in Secure Element")
                 keyGenerator =
                     KeyPairGenerator.getInstance(KeyProperties.KEY_ALGORITHM_EC, FidoConstants.FIDO2_KEYSTORE_PROVIDER)
 
                 val timeout = FidoConstants.FIDO2_USER_AUTHENTICATION_VALIDITY * 60
-
                 val keySpec =
                     KeyGenParameterSpec.Builder(credId, KeyProperties.PURPOSE_SIGN or KeyProperties.PURPOSE_VERIFY)
                         .setAlgorithmParameterSpec(ECGenParameterSpec(FidoConstants.FIDO2_KEY_ECDSA_CURVE))
@@ -89,8 +92,9 @@ class AndroidKeystoreKeyGeneration {
                             KeyProperties.DIGEST_SHA512
                         )
                         .setAttestationChallenge(CommonUtil.urlDecode(clientDataHash))
-                        .setIsStrongBoxBacked(true)
+                        .setIsStrongBoxBacked(true)  // StrongBox backed
                         .setUserAuthenticationRequired(true)
+                // Adjust for SDK versions
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                     keySpec.setUserAuthenticationParameters(
                         timeout,
@@ -99,219 +103,151 @@ class AndroidKeystoreKeyGeneration {
                 } else {
                     keySpec.setUserAuthenticationValidityDurationSeconds(timeout)
                 }
-                val keyBuilder = keySpec.build()
-                keyGenerator.initialize(keyBuilder)
+                Dlog.v("KeySpec.. = ${keySpec}")
+                keyGenerator.initialize(keySpec.build())
+                Dlog.v("KeyGenerator.. = ${keyGenerator}")
                 keyPair = keyGenerator.generateKeyPair()
+                Dlog.v("KeyPair.. = ${keyPair}")
                 securityModule = SecurityModule.SECURE_ELEMENT
-                Dlog.i(RootApplication.getResource().getString(R.string.fido_info_keygen_success_se))
-            } catch (e: NoSuchMethodError) {
-                Dlog.w(
-                    "${e::class.java.simpleName}: ${
-                        RootApplication.getResource().getString(R.string.fido_info_keygen_failure_se)
-                    }"
-                )
-                try {
-                    keyGenerator = KeyPairGenerator.getInstance(
-                        KeyProperties.KEY_ALGORITHM_EC,
-                        FidoConstants.FIDO2_KEYSTORE_PROVIDER
-                    )
-                    val timeout = FidoConstants.FIDO2_USER_AUTHENTICATION_VALIDITY * 60
-
-                    val keySpec =
-                        KeyGenParameterSpec.Builder(credId, KeyProperties.PURPOSE_SIGN or KeyProperties.PURPOSE_VERIFY)
-                            .setAlgorithmParameterSpec(ECGenParameterSpec(FidoConstants.FIDO2_KEY_ECDSA_CURVE))
-                            .setDigests(
-                                KeyProperties.DIGEST_SHA256,
-                                KeyProperties.DIGEST_SHA384,
-                                KeyProperties.DIGEST_SHA512
-                            )
-                            .setAttestationChallenge(CommonUtil.urlDecode(clientDataHash))
-                            .setUserAuthenticationRequired(true)
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                        keySpec.setUserAuthenticationParameters(
-                            timeout,
-                            KeyProperties.AUTH_DEVICE_CREDENTIAL or KeyProperties.AUTH_BIOMETRIC_STRONG
-                        )
-                    } else {
-                        keySpec.setUserAuthenticationValidityDurationSeconds(timeout)
-                    }
-                    val keyBuilder = keySpec.build()
-                    keyGenerator.initialize(keyBuilder)
-                    keyPair = keyGenerator.generateKeyPair()
-                    securityModule = SecurityModule.TRUSTED_EXECUTION_ENVIRONMENT
-                    Dlog.i(RootApplication.getResource().getString(R.string.fido_info_keygen_success_tee))
-                } catch (e2: Exception) {
-                    e2.printStackTrace()
-                    when (e2) {
-                        is NoSuchAlgorithmException,
-                        is InvalidAlgorithmParameterException,
-                        is NoSuchProviderException,
-                        -> {
-                            val key = FidoConstants.ERROR_EXCEPTION
-                            val msg = e.message ?: "Error Message Null"
-                            val ste = Thread.currentThread().stackTrace[4]
-                            return CommonUtil.getErrorJson(ste, key, msg)
-                        }
-                    }
-                }
-            } catch (e: StrongBoxUnavailableException) {
-                Dlog.w(
-                    "${e::class.java.simpleName}: ${
-                        RootApplication.getResource().getString(R.string.fido_info_keygen_failure_se)
-                    }"
-                )
-                try {
-                    keyGenerator = KeyPairGenerator.getInstance(
-                        KeyProperties.KEY_ALGORITHM_EC,
-                        FidoConstants.FIDO2_KEYSTORE_PROVIDER
-                    )
-                    val timeout = FidoConstants.FIDO2_USER_AUTHENTICATION_VALIDITY * 60
-
-                    val keySpec =
-                        KeyGenParameterSpec.Builder(credId, KeyProperties.PURPOSE_SIGN or KeyProperties.PURPOSE_VERIFY)
-                            .setAlgorithmParameterSpec(ECGenParameterSpec(FidoConstants.FIDO2_KEY_ECDSA_CURVE))
-                            .setDigests(
-                                KeyProperties.DIGEST_SHA256,
-                                KeyProperties.DIGEST_SHA384,
-                                KeyProperties.DIGEST_SHA512
-                            )
-                            .setAttestationChallenge(CommonUtil.urlDecode(clientDataHash))
-                            .setUserAuthenticationRequired(true)
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                        keySpec.setUserAuthenticationParameters(
-                            timeout,
-                            KeyProperties.AUTH_DEVICE_CREDENTIAL or KeyProperties.AUTH_BIOMETRIC_STRONG
-                        )
-                    } else {
-                        keySpec.setUserAuthenticationValidityDurationSeconds(timeout)
-                    }
-                    val keyBuilder = keySpec.build()
-                    keyGenerator.initialize(keyBuilder)
-                    keyPair = keyGenerator.generateKeyPair()
-                    securityModule = SecurityModule.TRUSTED_EXECUTION_ENVIRONMENT
-                    Dlog.i(RootApplication.getResource().getString(R.string.fido_info_keygen_success_tee))
-                } catch (e2: Exception) {
-                    e2.printStackTrace()
-                    when (e2) {
-                        is NoSuchAlgorithmException,
-                        is InvalidAlgorithmParameterException,
-                        is NoSuchProviderException,
-                        -> {
-                            val key = FidoConstants.ERROR_EXCEPTION
-                            val msg = e.message ?: "Error Message Null"
-                            val ste = Thread.currentThread().stackTrace[4]
-                            return CommonUtil.getErrorJson(ste, key, msg)
-                        }
-                    }
-                }
+                attestationProvided = true
+                Dlog.i("Key generated successfully in Secure Element (StrongBox)")
             } catch (e: Exception) {
-                when (e) {
-                    is IllegalStateException,
-                    is InvalidAlgorithmParameterException,
-                    is NoSuchAlgorithmException,
-                    is NoSuchProviderException,
-                    -> {
-                        e.printStackTrace()
-                        val key = FidoConstants.ERROR_EXCEPTION
-                        val msg = e.message ?: "Error Message Null"
-                        val ste = Thread.currentThread().stackTrace[4]
-                        return CommonUtil.getErrorJson(ste, key, msg)
-                    }
+                Dlog.w("Secure Element (StrongBox) key generation failed, falling back to TEE: ${e.localizedMessage}")
+                // Step 2: Fallback to TEE
+                try {
+                    keyPair = tryTEEKeyGeneration(credId, clientDataHash)
+                    attestationProvided = true
+                } catch (teeException: Exception) {
+                    Dlog.e("TEE key generation failed, falling back to software-based key generation: ${teeException.localizedMessage}")
+                    // Step 3: Fallback to software-based key generation
+                    keyPair = generateWithoutAttestation(credId, clientDataHash)
+                    attestationProvided = false
                 }
+                securityModule =
+                    if (keyPair != null) SecurityModule.TRUSTED_EXECUTION_ENVIRONMENT else SecurityModule.SOFTWARE
             }
 
-            // Retrieve newly generated key as part of attestation process
-            try {
-                // Get information on the key-pair
-                val keyInfo: KeyInfo?
-
-                // TODO: Check for local device authentication: PIN, Fingerprint, Face, etc.
-                val keyStore = KeyStore.getInstance(FidoConstants.FIDO2_KEYSTORE_PROVIDER)
-                keyStore.load(null)
-                check(keyPair != null)
-
-                val privateKey = keyPair.private
-                val publicKey = keyPair.public
-                val keyFactory = KeyFactory.getInstance(privateKey.algorithm, FidoConstants.FIDO2_KEYSTORE_PROVIDER)
-                keyInfo = keyFactory.getKeySpec(privateKey, KeyInfo::class.java)
-                Dlog.v("ECDSA PublicKey Format: ${publicKey.format}")
-
-                // Check the origin of the key - if Generated, it was generated inside AndroidKeystore
-                // but not necessarily in hardware - emulators do support the AndroidKeystore in
-                // software, so it can be misleading without attestation check
-                check(keyInfo != null)
-                keyOrigin = when (keyInfo.origin) {
-                    KeyProperties.ORIGIN_GENERATED -> {
-                        KeyOrigin.GENERATED
-                    }
-
-                    KeyProperties.ORIGIN_IMPORTED -> {
-                        KeyOrigin.IMPORTED
-                    }
-
-                    KeyProperties.ORIGIN_UNKNOWN -> {
-                        KeyOrigin.UNKNOWN
-                    }
-
-                    else -> {
-                        KeyOrigin.UNKNOWN
-                    }
+            // Step 4: Retrieve the newly generated key information
+            if (keyPair != null) {
+                Dlog.v("Attempting to retrieve key information")
+                try {
+                    return retrieveKeyInfo(keyPair, securityModule, clientDataHash, attestationProvided)
+                } catch (e: Exception) {
+                    Dlog.e("Exception during key retrieval: ${e.localizedMessage}")
+                    return handleKeyGenerationError(e)
                 }
-
-                // print key information
-                val algorithm = "${privateKey.algorithm} [${FidoConstants.FIDO2_KEY_ECDSA_CURVE}]"
-                val secureHw = "${keyInfo.isInsideSecureHardware} [${securityModule ?: "null"}]"
-                Dlog.v(
-                    "${
-                        RootApplication.getResource().getString(R.string.fido_key_info_key_name)
-                    } ${keyInfo.keystoreAlias}"
-                )
-                Dlog.v("${RootApplication.getResource().getString(R.string.fido_key_info_origin)} $keyOrigin")
-                Dlog.v("${RootApplication.getResource().getString(R.string.fido_key_info_algorithm)} $algorithm")
-                Dlog.v("${RootApplication.getResource().getString(R.string.fido_key_info_size)} ${keyInfo.keySize}")
-                Dlog.v(
-                    "${
-                        RootApplication.getResource().getString(R.string.fido_key_info_user_auth)
-                    } ${keyInfo.isUserAuthenticationRequired}"
-                )
-                Dlog.v("${RootApplication.getResource().getString(R.string.fido_key_info_se_module)} $secureHw")
-                val gson = GsonBuilder().setPrettyPrinting().create()
-                val keyJson = JsonObject().apply {
-                    addProperty(FidoConstants.FIDO2_KEY_LABEL_KEY_NAME, keyInfo.keystoreAlias)
-                    addProperty(FidoConstants.FIDO2_KEY_LABEL_ORIGIN, keyOrigin.name)
-                    addProperty(FidoConstants.FIDO2_KEY_LABEL_ALGORITHM, algorithm)
-                    addProperty(FidoConstants.FIDO2_KEY_LABEL_SIZE, keyInfo.keySize)
-                    addProperty(FidoConstants.FIDO2_KEY_LABEL_USER_AUTH, keyInfo.isUserAuthenticationRequired)
-                    addProperty(FidoConstants.FIDO2_KEY_LABEL_SE_MODULE, secureHw)
-                    addProperty(FidoConstants.FIDO2_KEY_LABEL_HEX_PUBLIC_KEY, Hex.toHexString(publicKey.encoded))
-                }
-                Dlog.v("Newly Generated FIDO2 Key: ${gson.toJson(keyJson)}")
-                return keyJson
-            } catch (e: Exception) {
-                when (e) {
-                    is KeyStoreException,
-                    is CertificateException,
-                    is IOException,
-                    is NoSuchAlgorithmException,
-                    is NoSuchProviderException,
-                    is InvalidKeySpecException,
-                    is JsonIOException,
-                    is JsonParseException,
-                    -> {
-                        val key = FidoConstants.ERROR_EXCEPTION
-                        val msg = e.message ?: "Error Message Null"
-                        val ste = Thread.currentThread().stackTrace[4]
-                        return CommonUtil.getErrorJson(ste, key, msg)
-                    }
-
-                    else -> {
-                        e.printStackTrace()
-                        Dlog.e("Unknown Exception!!! : ${e::class.java.simpleName}")
-                        Dlog.e("Error Reason: ${e.message}")
-                        return null
-                    }
-                }
+            } else {
+                Dlog.e("KeyPair generation failed")
+                return null
             }
+        }
+
+        // Function to attempt key generation with TEE (without StrongBox)
+        private fun tryTEEKeyGeneration(credId: String, clientDataHash: String): KeyPair? {
+            Dlog.v("Attempting to generate key in TEE")
+            val timeout = FidoConstants.FIDO2_USER_AUTHENTICATION_VALIDITY * 60
+            val keyGenerator =
+                KeyPairGenerator.getInstance(KeyProperties.KEY_ALGORITHM_EC, FidoConstants.FIDO2_KEYSTORE_PROVIDER)
+
+            val keySpec =
+                KeyGenParameterSpec.Builder(credId, KeyProperties.PURPOSE_SIGN or KeyProperties.PURPOSE_VERIFY)
+                    .setAlgorithmParameterSpec(ECGenParameterSpec(FidoConstants.FIDO2_KEY_ECDSA_CURVE))
+                    .setDigests(
+                        KeyProperties.DIGEST_SHA256,
+                        KeyProperties.DIGEST_SHA384,
+                        KeyProperties.DIGEST_SHA512
+                    )
+                    .setAttestationChallenge(CommonUtil.urlDecode(clientDataHash))
+                    .setUserAuthenticationRequired(true)  // TEE key generation without StrongBox
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                keySpec.setUserAuthenticationParameters(
+                    timeout,
+                    KeyProperties.AUTH_DEVICE_CREDENTIAL or KeyProperties.AUTH_BIOMETRIC_STRONG
+                )
+            } else {
+                keySpec.setUserAuthenticationValidityDurationSeconds(timeout)
+            }
+
+            keyGenerator.initialize(keySpec.build())
+            return keyGenerator.generateKeyPair()
+        }
+
+        // Function to fallback to software-based key generation (without hardware backing)
+        private fun generateWithoutAttestation(credId: String, clientDataHash: String): KeyPair? {
+            Dlog.v("Attempting to generate key wihtout attestation")
+            val timeout = FidoConstants.FIDO2_USER_AUTHENTICATION_VALIDITY * 60
+            val keyGenerator = KeyPairGenerator.getInstance(KeyProperties.KEY_ALGORITHM_EC, "AndroidKeyStore")
+
+            val keySpec =
+                KeyGenParameterSpec.Builder(credId, KeyProperties.PURPOSE_SIGN or KeyProperties.PURPOSE_VERIFY)
+                    .setAlgorithmParameterSpec(ECGenParameterSpec(FidoConstants.FIDO2_KEY_ECDSA_CURVE))
+                    .setDigests(
+                        KeyProperties.DIGEST_SHA256,
+                        KeyProperties.DIGEST_SHA384,
+                        KeyProperties.DIGEST_SHA512
+                    )
+                    .setUserAuthenticationValidityDurationSeconds(60)
+                    .setUserAuthenticationRequired(true)
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                keySpec.setUserAuthenticationParameters(
+                    timeout,
+                    KeyProperties.AUTH_DEVICE_CREDENTIAL or KeyProperties.AUTH_BIOMETRIC_STRONG
+                )
+            } else {
+                keySpec.setUserAuthenticationValidityDurationSeconds(timeout)
+            }
+
+            keyGenerator.initialize(keySpec.build())
+            return keyGenerator.generateKeyPair()
+        }
+
+        private fun retrieveKeyInfo(
+            keyPair: KeyPair,
+            securityModule: SecurityModule?,
+            clientDataHash: String,
+            attestationProvided: Boolean
+        ): JsonObject {
+            Dlog.v("Retrieving key information")
+
+            val keyStore = KeyStore.getInstance(FidoConstants.FIDO2_KEYSTORE_PROVIDER)
+            keyStore.load(null)
+
+            val privateKey = keyPair.private
+            val publicKey = keyPair.public
+            val keyFactory = KeyFactory.getInstance(privateKey.algorithm, FidoConstants.FIDO2_KEYSTORE_PROVIDER)
+            val keyInfo = keyFactory.getKeySpec(privateKey, KeyInfo::class.java)
+            Dlog.v("Retrieved KeyInfo successfully")
+
+            val keyOrigin = when (keyInfo.origin) {
+                KeyProperties.ORIGIN_GENERATED -> KeyOrigin.GENERATED
+                KeyProperties.ORIGIN_IMPORTED -> KeyOrigin.IMPORTED
+                KeyProperties.ORIGIN_UNKNOWN -> KeyOrigin.UNKNOWN
+                else -> KeyOrigin.UNKNOWN
+            }
+
+            val algorithm = "${privateKey.algorithm} [${FidoConstants.FIDO2_KEY_ECDSA_CURVE}]"
+            val secureHw = "${keyInfo.isInsideSecureHardware} [${securityModule ?: "null"}]"
+            Dlog.v("KeyInfo: Alias = ${keyInfo.keystoreAlias}, Origin = $keyOrigin, Algorithm = $algorithm")
+
+            return JsonObject().apply {
+                addProperty(FidoConstants.FIDO2_KEY_LABEL_KEY_NAME, keyInfo.keystoreAlias)
+                addProperty(FidoConstants.FIDO2_KEY_LABEL_ORIGIN, keyOrigin.name)
+                addProperty(FidoConstants.FIDO2_KEY_LABEL_ALGORITHM, algorithm)
+                addProperty(FidoConstants.FIDO2_KEY_LABEL_SIZE, keyInfo.keySize)
+                addProperty(FidoConstants.FIDO2_KEY_LABEL_USER_AUTH, keyInfo.isUserAuthenticationRequired)
+                addProperty(FidoConstants.FIDO2_KEY_LABEL_SE_MODULE, secureHw)
+                addProperty(FidoConstants.FIDO2_KEY_LABEL_HEX_PUBLIC_KEY, Hex.toHexString(publicKey.encoded))
+                addProperty("AttestationProvided", attestationProvided)
+            }
+        }
+
+        private fun handleKeyGenerationError(e: Exception): JsonObject {
+            val key = FidoConstants.ERROR_EXCEPTION
+            val msg = e.message ?: "Error Message Null"
+            val ste = Thread.currentThread().stackTrace[4]
+            return CommonUtil.getErrorJson(ste, key, msg)
         }
     }
 }

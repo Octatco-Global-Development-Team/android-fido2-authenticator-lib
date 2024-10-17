@@ -2,6 +2,8 @@ package sortielab.library.fido2
 
 import android.app.Application
 import android.content.res.Resources
+import org.bouncycastle.jce.provider.BouncyCastleProvider
+import java.security.Security
 
 class RootApplication: Application() {
         companion object {
@@ -22,5 +24,14 @@ class RootApplication: Application() {
             instance = app
             res = instance.resources
         }
+    }
+    override fun onCreate() {
+        super.onCreate()
+
+        // Add Bouncy Castle provider during application startup
+        Security.addProvider(BouncyCastleProvider())
+
+//        // Any other initialization logic
+//        libraryLinkApplication(this, BuildConfig.DEBUG)
     }
 }

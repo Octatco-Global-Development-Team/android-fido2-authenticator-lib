@@ -67,6 +67,7 @@ class AuthenticatorMakeCredential {
                  *     TokenBinding                 tokenBinding; // Optional - empty for now
                  * };
                  */
+                Dlog.i("Step 1 Start: Create Client Data")
                 check(rpid != null && userid != null && username != null && dispName != null && challenge != null)
                 val rfc6454Origin = CommonUtil.getRfc6454Origin(webOrigin)
                 val tldOrigin = CommonUtil.removeFirstSubDomain(webOrigin)
@@ -85,7 +86,7 @@ class AuthenticatorMakeCredential {
                 val clientDataHash = CommonUtil.getBaseUrlSafeClientDataHash(FidoOperation.CREATE, challenge, rfc6454Origin)
 
                 check(clientDataHash != null)
-                Dlog.v("clientDataJson: $clientDataJson\nCalculated Base64UrlSafe ClientDataHash: $clientDataHash")
+                Dlog.i("Step 1 Complete: Created clientDataJson: $clientDataJson\nCalculated Base64UrlSafe ClientDataHash: $clientDataHash")
 
                 /**
                  * Step 2 - Generate the public-private key-pair using ECDSA (mostly)
@@ -101,11 +102,13 @@ class AuthenticatorMakeCredential {
                  *     .put(Constants.FIDO2_KEY_LABEL_SEMODULE, mSecureHardware)
                  *     .put(Constants.FIDO2_KEY_LABEL_HEX_PUBLIC_KEY, Hex.toHexString(mPublicKey.getEncoded()));
                  */
+                Dlog.i("Step 2 Start -- Generate Priv Pub Key")
                 // First generate the credential ID
                 val credId = CommonUtil.getNewCredentialId(rpid, userid)
                 Dlog.v("Cred: $credId")
                 val newKey = AndroidKeystoreKeyGeneration.makeAndroidKeystoreKey(credId, clientDataHash)
                 if (newKey == null) {
+                    Dlog.w("Key is empty")
                     Dlog.w(RootApplication.getResource().getString(R.string.android_keystore_key_generate_failed))
                     return null
                 } else {
@@ -120,6 +123,8 @@ class AuthenticatorMakeCredential {
                 // No keygen errors
                 Dlog.v("Generated Key-Pair: $newKey, ${newKey::class.java.simpleName}")
                 val json = newKey as JsonObject
+                val attestationProvided = json.get("AttestationProvided").asBoolean
+                Dlog.v("ATTESTATION PROVIDED....: $attestationProvided")
                 // Key-pair generated - create PublicKeyCredential object for persistence to RoomDB
                 val publicKeyCredential = PublicKeyCredential(
                     id = 0,
@@ -141,7 +146,7 @@ class AuthenticatorMakeCredential {
                     userHandle = CommonUtil.urlEncode(json.toString().toByteArray(Charsets.UTF_8)),
                     origin = rfc6454Origin
                 )
-                Dlog.v("Built up PublicKeyCredential: $publicKeyCredential")
+                Dlog.v("Step 2 Complete. Built up PublicKeyCredential: $publicKeyCredential")
 
                 /**
                  * Step 3 - Create Attested Credential Data byte array
@@ -152,6 +157,7 @@ class AuthenticatorMakeCredential {
                  *      credentialId:  L bytes
                  *      credentialPublicKey:  Variable length - in CBOR, shown at link above
                  */
+                Dlog.i("Step 3 Start -- Create Attested Credential Data")
                 val pubKeyBytes = Hex.decode(publicKeyCredential.publicKey)
                 var cosePubKey = ByteArray(0)
                 var pubKeyLen = 0
@@ -182,7 +188,7 @@ class AuthenticatorMakeCredential {
                     put(cosePubKey)
                 }
                 val attestedCredData = byteBuffStep3.array()
-
+                Dlog.v("Step 3 Complete. AttestedCredData")
 
                 /**
                  * Step 4 - Generate Authenticator Data
@@ -195,6 +201,7 @@ class AuthenticatorMakeCredential {
                  *  L-bytes with attestedCredentialData - variable length
                  *  N-bytes with extensions - variable length
                  */
+                Dlog.i("Step 4 Start -- Create Authenticator Data")
                 val registrationFlags = CommonUtil.setFlags(FidoConstants.ANDROID_KEYSTORE_DEFAULT_REGISTRATION_FLAGS)
                 val extensions = arrayListOf(FidoConstants.FIDO2_EXTENSION_USER_VERIFICATION_METHOD)
                 val extensionOutput = CommonUtil.getCborExtensions(
@@ -212,7 +219,7 @@ class AuthenticatorMakeCredential {
                 val authenticatorDataBytes = byteBuffStep4.array()
                 publicKeyCredential.counter = curCounter + FidoConstants.FIDO_COUNTER_ONE
                 publicKeyCredential.authenticatorData = Hex.toHexString(authenticatorDataBytes)
-                Dlog.v("Hex-Encoded Authenticator Data: ${Hex.toHexString(authenticatorDataBytes)}")
+                Dlog.v("Step 4 Complete. Hex-Encoded Authenticator Data: ${Hex.toHexString(authenticatorDataBytes)}")
 
                 /**
                  * Step 5 - Final step - Get an AndroidKeystore Key attestation
@@ -229,15 +236,30 @@ class AuthenticatorMakeCredential {
                  *           }
                  * }
                  */
+                Dlog.i("Step 5 Start -- Create Android Keystore Attestation")
+
+                if (!attestationProvided) {
+                    Dlog.i("GENERATING WITHOUT ATTESTATION!")
+                    publicKeyCredential.cborAttestation =
+                        AndroidKeystoreAttestation.buildCborAttestation(authenticatorDataBytes, null, null, null, false)
+                    return publicKeyCredential
+                }
+
+                Dlog.i("GENERATING WITH ATTESTATION!")
                 val response =
                     AndroidKeystoreAttestation.makeAndroidKeyAttestation(authenticatorDataBytes, credId, clientDataHash)
+                Dlog.v("response: ${response}")
                 if (response != null) {
                     val fidoAndKeyStoreAttestation =
                         response.getAsJsonObject(FidoConstants.ANDROID_KEYSTORE_ATTESTATION_LABEL_FIDO)
+                    Dlog.v("fidoandkeystore ${fidoAndKeyStoreAttestation}")
                     publicKeyCredential.jsonAttestation =
                         fidoAndKeyStoreAttestation.getAsJsonObject(FidoConstants.ANDROID_KEYSTORE_ATTESTATION_LABEL_FIDO_JSON_FORMAT).toString()
+                    Dlog.v("publicKey,json ${publicKeyCredential.jsonAttestation}")
                     publicKeyCredential.cborAttestation =
                         fidoAndKeyStoreAttestation.get(FidoConstants.ANDROID_KEYSTORE_ATTESTATION_LABEL_FIDO_CBOR_FORMAT).asString
+                    Dlog.v("publicKey,cbor ${publicKeyCredential.cborAttestation}")
+                    Dlog.i("Step 5 Complete")
                     return publicKeyCredential
                 }
             } catch (e: Exception) {

@@ -246,7 +246,7 @@ class AndroidKeystoreAttestation {
                 // Create the CBOR attestation for FIDO - sending Certificate chain rather than a
                 // JSON array to save resources converting bytes to CBOR
                 val cborAttestation =
-                    buildCborAttestation(authenticatorDataBytes, privateKey.algorithm, signature, certChain)
+                    buildCborAttestation(authenticatorDataBytes, privateKey.algorithm, signature, certChain, true)
 
                 // Create Android Key Attestation with embedded digital signature
                 val androidKeyAttestationObject = JsonObject().apply {
@@ -332,11 +332,12 @@ class AndroidKeystoreAttestation {
          *
          */
         @Throws(IOException::class, CertificateEncodingException::class, NoSuchAlgorithmException::class)
-        private fun buildCborAttestation(
+        fun buildCborAttestation(
             authenticatorData: ByteArray,
             algorithm: String?,
             signature: ByteArray?,
-            certChain: ArrayList<Certificate>?
+            certChain: ArrayList<Certificate>?,
+            attestationProvided: Boolean
         ): String {
             val baos = ByteArrayOutputStream()
             val cbe = CborEncoder(baos)
@@ -350,57 +351,66 @@ class AndroidKeystoreAttestation {
 
             // Second element - attestation format - "fmt"
             cbe.writeTextString(FidoConstants.ANDROID_KEYSTORE_ATTESTATION_LABEL_FORMAT)
-            cbe.writeTextString(FidoConstants.ANDROID_KEYSTORE_ATTESTATION_VALUE_FORMAT)
+            cbe.writeTextString(
+                if (attestationProvided)
+                    FidoConstants.ANDROID_KEYSTORE_ATTESTATION_VALUE_FORMAT
+                else
+                    FidoConstants.ANDROID_KEYSTORE_ATTESTATION_NONE_VALUE_FORMAT
+            )
 
             // Third element - attestation statement - "attStmt"
             cbe.writeTextString(FidoConstants.ANDROID_KEYSTORE_ATTESTATION_LABEL_STATEMENT)
-            cbe.writeMapStart(3)
+            if (!attestationProvided) {
+                cbe.writeMapStart(0) // -> attStmt: {}
+            } else {
+                cbe.writeMapStart(3)
 
-            // First sub-element of attStmt - only 2 choices
-            if (algorithm != null) {
-                cbe.writeTextString(FidoConstants.ANDROID_KEYSTORE_ATTESTATION_LABEL_ALGORITHM)
-                when (algorithm) {
-                    FidoConstants.JSON_KEY_PUBLIC_KEY_ALG_EC_LABEL -> {
-                        cbe.writeInt(FidoConstants.JSON_KEY_PUBLIC_KEY_ALG_ES256.toLong())
-                    }
+                // First sub-element of attStmt - only 2 choices
+                if (algorithm != null) {
+                    cbe.writeTextString(FidoConstants.ANDROID_KEYSTORE_ATTESTATION_LABEL_ALGORITHM)
+                    when (algorithm) {
+                        FidoConstants.JSON_KEY_PUBLIC_KEY_ALG_EC_LABEL -> {
+                            cbe.writeInt(FidoConstants.JSON_KEY_PUBLIC_KEY_ALG_ES256.toLong())
+                        }
 
-                    FidoConstants.JSON_KEY_PUBLIC_KEY_ALG_RSA_LABEL -> {
-                        cbe.writeInt(FidoConstants.JSON_KEY_PUBLIC_KEY_ALG_RS256.toLong())
-                    }
+                        FidoConstants.JSON_KEY_PUBLIC_KEY_ALG_RSA_LABEL -> {
+                            cbe.writeInt(FidoConstants.JSON_KEY_PUBLIC_KEY_ALG_RS256.toLong())
+                        }
 
-                    else -> {
-                        throw NoSuchAlgorithmException("UnSupported Algorithm for AKS: $algorithm")
+                        else -> {
+                            throw NoSuchAlgorithmException("UnSupported Algorithm for AKS: $algorithm")
+                        }
                     }
+                } else {
+                    throw NoSuchAlgorithmException("Empty algorithm parameter!!")
                 }
-            } else {
-                throw NoSuchAlgorithmException("Empty algorithm parameter!!")
-            }
 
-            // Second sub-element of attStmt
-            if (signature != null) {
-                cbe.writeTextString(FidoConstants.ANDROID_KEYSTORE_ATTESTATION_LABEL_SIGNATURE)
-                cbe.writeByteString(signature)
-            } else {
-                throw IOException("Empty Attestation Signature Parameter!!")
-            }
+                // Second sub-element of attStmt
+                if (signature != null) {
+                    cbe.writeTextString(FidoConstants.ANDROID_KEYSTORE_ATTESTATION_LABEL_SIGNATURE)
+                    cbe.writeByteString(signature)
+                } else {
+                    throw IOException("Empty Attestation Signature Parameter!!")
+                }
 
-            // Third sub-element of attStmt
-            if (certChain != null) {
-                val chLen = certChain.size
-                cbe.writeTextString(FidoConstants.ANDROID_KEYSTORE_ATTESTATION_LABEL_X509_CERTIFICATE_CHAIN)
-                cbe.writeArrayStart(chLen)
+                // Third sub-element of attStmt
+                if (certChain != null) {
+                    val chLen = certChain.size
+                    cbe.writeTextString(FidoConstants.ANDROID_KEYSTORE_ATTESTATION_LABEL_X509_CERTIFICATE_CHAIN)
+                    cbe.writeArrayStart(chLen)
 
-                // First sub-sub-element (of the Certificate chain)
-                var x509Cert = certChain[0] as X509Certificate
-                cbe.writeByteString(x509Cert.encoded)
-
-                // Remaining certificates in chain are all CA certificates
-                for (i in 1 until chLen) {
-                    x509Cert = certChain[i] as X509Certificate
+                    // First sub-sub-element (of the Certificate chain)
+                    var x509Cert = certChain[0] as X509Certificate
                     cbe.writeByteString(x509Cert.encoded)
+
+                    // Remaining certificates in chain are all CA certificates
+                    for (i in 1 until chLen) {
+                        x509Cert = certChain[i] as X509Certificate
+                        cbe.writeByteString(x509Cert.encoded)
+                    }
+                } else {
+                    throw IOException("Empty Certificate Chain Parameter!!")
                 }
-            } else {
-                throw IOException("Empty Certificate Chain Parameter!!")
             }
 
             // Convert to byte-array and hex-encode to a string for display

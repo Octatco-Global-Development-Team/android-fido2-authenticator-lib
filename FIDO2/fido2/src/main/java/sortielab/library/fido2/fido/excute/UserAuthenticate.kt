@@ -44,7 +44,9 @@ class UserAuthenticate(activity: FragmentActivity, type: String) {
     }
 
     private fun createBioPromptInfo(type: String): BiometricPrompt.PromptInfo {
+        Dlog.i("NOW CREATE BIO PROMPT.. SDK VERSION: ${Build.VERSION.SDK_INT} BUILD VERSION: ${Build.VERSION_CODES.R}")
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            Dlog.i("Device supports API Level 30 or higher")
             BiometricPrompt.PromptInfo.Builder()
                 .setTitle(
                     if (type == FidoConstants.USER_AUTHENTICATE_MODE_CREATE) {
@@ -63,6 +65,7 @@ class UserAuthenticate(activity: FragmentActivity, type: String) {
                 .setAllowedAuthenticators(BiometricManager.Authenticators.BIOMETRIC_STRONG or BiometricManager.Authenticators.DEVICE_CREDENTIAL)
                 .build()
         } else {
+            Dlog.i("Device doesnt support API level 30")
             BiometricPrompt.PromptInfo.Builder()
                 .setTitle(
                     if (type == FidoConstants.USER_AUTHENTICATE_MODE_CREATE) {

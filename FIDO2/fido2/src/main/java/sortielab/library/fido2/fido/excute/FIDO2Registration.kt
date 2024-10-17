@@ -47,6 +47,7 @@ object FIDO2Registration {
                 this.context = RootApplication.getInstance().baseContext
                 this.bioCallback = object : BioCallback {
                     override fun onSuccess() {
+                        Dlog.i("USER VERIFICATION COMPLETE. START TO MAKE KEY. preReg: ${preReg} webOrigin: ${webOrigin}")
                         makeFIDO2Key(callback, preReg, webOrigin)
                     }
 
