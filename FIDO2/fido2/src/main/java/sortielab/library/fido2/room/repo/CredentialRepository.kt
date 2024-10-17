@@ -36,7 +36,7 @@ class CredentialRepository(application: Application) {
     @Throws(IOException::class)
     @WorkerThread
     suspend fun deleteCredential(origin: String, credId: String): Boolean {
-        val rpid = CommonUtil.getTldPlusOne(origin) ?: return false
+        val rpid = CommonUtil.removeFirstSubDomain(origin) ?: return false
         return deleteQueryResult(rpid, credId)
     }
 

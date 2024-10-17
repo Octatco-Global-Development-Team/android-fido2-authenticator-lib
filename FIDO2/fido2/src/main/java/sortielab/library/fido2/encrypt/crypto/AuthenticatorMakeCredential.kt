@@ -69,7 +69,7 @@ class AuthenticatorMakeCredential {
                  */
                 check(rpid != null && userid != null && username != null && dispName != null && challenge != null)
                 val rfc6454Origin = CommonUtil.getRfc6454Origin(webOrigin)
-                val tldOrigin = CommonUtil.getTldPlusOne(webOrigin)
+                val tldOrigin = CommonUtil.removeFirstSubDomain(webOrigin)
                 if (!rpid.equals(tldOrigin, ignoreCase = true)) {
                     Dlog.w(
                         "${
